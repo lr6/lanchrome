@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>隐私政策 — 关注整理所 / TidyFollows</title>
+    <meta
+      name="description"
+      content="关注整理所（TidyFollows）隐私政策：说明扩展处理哪些数据、数据保存在哪里、如何删除，以及权限用途。"
+    />
+    <link rel="icon" href="/assets/icon128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">
+          <img src="/assets/icon128.png" alt="" width="32" height="32" />
+          <span>关注整理所<small>TIDYFOLLOWS</small></span>
+        </a>
+        <nav class="site-nav" aria-label="主导航">
+          <a href="/">首页</a>
+          <a href="/support">支持</a>
+          <a href="/privacy" aria-current="page">隐私政策</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="page-head">
+        <h1>隐私政策</h1>
+        <p>关注整理所 / TidyFollows Chrome 扩展</p>
+      </div>
+
+      <article class="prose">
+        <div class="meta">
+          <span>生效日期：2026 年 10 月 25 日</span>
+          <span>适用扩展：关注整理所（TidyFollows）</span>
+          <span>联系方式：<a href="mailto:support@1475369.xyz">support@1475369.xyz</a></span>
+          <span>网站：<a href="https://tidyfollows.1475369.xyz">tidyfollows.1475369.xyz</a></span>
+        </div>
+
+        <ul class="toc">
+          <li><a href="#data">1. 处理的数据</a></li>
+          <li><a href="#storage">2. 存储位置</a></li>
+          <li><a href="#use">3. 使用方式</a></li>
+          <li><a href="#share">4. 数据共享</a></li>
+          <li><a href="#retention">5. 保留与删除</a></li>
+          <li><a href="#permissions">6. 权限说明</a></li>
+          <li><a href="#third-party">7. 第三方服务</a></li>
+          <li><a href="#children">8. 儿童隐私</a></li>
+          <li><a href="#disclaimer">9. 免责声明</a></li>
+          <li><a href="#changes">10. 政策更新</a></li>
+          <li><a href="#contact">11. 联系我们</a></li>
+          <li><a href="#english">English</a></li>
+        </ul>
+
+        <h2 id="data">1. 我们处理哪些数据</h2>
+        <p>关注整理所是一个在本机浏览器中运行的扩展。为了提供互关检测与关注整理功能，扩展会访问和处理：</p>
+        <ul>
+          <li>你当前登录的 X 账号信息，例如账号 ID、用户名和显示名称（用于确认当前账号）；</li>
+          <li>你自己的「正在关注」与「关注我的人」名单，以及这些账号的公开资料（用于计算互关关系）；</li>
+          <li>你在扩展中勾选、保护和执行取关的账号记录（用于执行你确认的操作和展示历史）；</li>
+          <li>扩展设置、任务进度、扫描结果与本地历史记录；</li>
+          <li>X 网页端接口参数缓存，包括 GraphQL 的 query id、features，以及网页端请求中携带的授权头与 CSRF 令牌。</li>
+        </ul>
+        <p>
+          这些数据均来自你自己已登录的 x.com 页面。扩展不读取与关注关系无关的浏览记录、私信、推文内容或其他网站的数据。
+        </p>
+
+        <h2 id="storage">2. 数据存储在哪里</h2>
+        <ul>
+          <li>所有数据都保存在你本机的浏览器存储（<code>chrome.storage.local</code>）中。</li>
+          <li>扩展不运营服务器，不上传、不同步、不备份任何名单、账号或任务数据到远端。</li>
+          <li>扩展不包含统计、广告、跟踪或远程加载的代码。</li>
+          <li>导出的 JSON 备份只保存在你的电脑上，由你自行保管或分享。备份文件不包含接口参数缓存中的请求头。</li>
+        </ul>
+
+        <h2 id="use">3. 我们如何使用数据</h2>
+        <p>数据仅用于：</p>
+        <ul>
+          <li>计算谁没有回关你、你没有回关谁、谁与你互相关注；</li>
+          <li>在你勾选并二次确认后，向 X 发起对应的取关请求；</li>
+          <li>保存特别关注名单，并在批量操作时跳过这些账号；</li>
+          <li>保存任务进度，使中断后的任务可以继续；</li>
+          <li>在你本机生成关系记录与历史。</li>
+        </ul>
+        <p>我们不会将数据用于广告、用户画像、出售或与第三方共享。</p>
+
+        <h2 id="share">4. 数据共享</h2>
+        <p>
+          我们不向任何第三方出售、出租或共享你的数据。扩展不包含第三方分析或广告 SDK。扩展只会直接与你已登录的 X
+          网页端通信，以读取你自己的关注关系并执行你确认的操作。
+        </p>
+
+        <h2 id="retention">5. 数据保留与删除</h2>
+        <p>数据会一直保存在你的浏览器中，直到你：</p>
+        <ul>
+          <li>在扩展的「备份与恢复 → 清空所有数据」中删除；</li>
+          <li>卸载扩展；</li>
+          <li>清除浏览器数据。</li>
+        </ul>
+        <p>
+          删除后无法恢复。建议在删除前先导出 JSON 备份，并把备份文件保存在你自己的安全位置。接口参数缓存也可以在「设置」中单独清除。
+        </p>
+
+        <h2 id="permissions">6. 权限说明</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>权限</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>storage</code> / <code>unlimitedStorage</code></td>
+              <td>在本机保存关系记录、特别关注、任务进度与设置；关注名单较大时避免超出默认存储额度。</td>
+            </tr>
+            <tr>
+              <td><code>tabs</code></td>
+              <td>打开、检查并关闭扩展专用的 x.com 执行标签页。</td>
+            </tr>
+            <tr>
+              <td><code>scripting</code></td>
+              <td>向已经打开的 x.com 标签页补注入内容脚本，用于恢复任务。</td>
+            </tr>
+            <tr>
+              <td><code>alarms</code></td>
+              <td>定时清理临时标签页、监控任务状态。</td>
+            </tr>
+            <tr>
+              <td><code>https://x.com/*</code>、<code>https://twitter.com/*</code></td>
+              <td>读取你自己的关注关系，并在你确认后执行取关。</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          扩展没有申请 <code>cookies</code> 权限。扩展在 x.com 页面上下文中运行，复用页面自身已有的登录会话和请求头来与 X
+          通信；这些请求头仅在本机内存和本地存储中使用，不会发送给任何第三方。具体来说，扩展会读取页面自身的 CSRF 令牌（<code>ct0</code>）用于向
+          X 发起请求，不读取或保存其他 cookie。
+        </p>
+
+        <h2 id="third-party">7. 第三方服务</h2>
+        <p>
+          扩展直接与你已登录的 x.com 页面通信，不使用任何第三方服务器、CDN 或统计服务。你在 X
+          上的数据处理同时受 X 自己的隐私政策约束。
+        </p>
+
+        <h2 id="children">8. 儿童隐私</h2>
+        <p>本扩展不面向 13 岁以下儿童，也不会有意收集儿童数据。</p>
+
+        <h2 id="disclaimer">9. 免责声明</h2>
+        <p>
+          本扩展不是 X Corp. 的官方产品，与 X 无隶属关系。X 的网页接口可能变化，扩展功能可能因此暂时失效。请遵守 X
+          的服务条款与当地法律法规，并自行承担使用批量取关功能可能带来的账号风险。
+        </p>
+
+        <h2 id="changes">10. 政策更新</h2>
+        <p>
+          如果本政策发生变更，我们会更新本页面的「生效日期」。重大变更会在扩展更新说明中提示。继续使用扩展即表示你接受更新后的政策。
+        </p>
+
+        <h2 id="contact">11. 联系我们</h2>
+        <p>
+          如有隐私相关问题、数据删除请求或安全报告，请联系
+          <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>。我们通常会在 3 个工作日内回复。
+        </p>
+
+        <hr class="sep" />
+
+        <h2 id="english">English Summary</h2>
+        <p>
+          TidyFollows is a Chrome extension that runs entirely in your browser. It reads your own X (Twitter) Following and
+          Followers lists, computes mutual-follow relationships, and unfollows accounts only after you explicitly select
+          and confirm them.
+        </p>
+        <ul>
+          <li>
+            <strong>Data processed:</strong> your X account identity, your own follow relationships, the accounts you
+            select, and local settings/task progress. API request metadata (authorization header and CSRF token) captured
+            from your own x.com session is cached locally.
+          </li>
+          <li><strong>Storage:</strong> everything is stored locally in <code>chrome.storage.local</code>. We operate no server.</li>
+          <li>
+            <strong>No collection or sharing:</strong> no analytics, advertising, tracking, remote code, or third-party
+            services. Nothing is uploaded, sold, or shared.
+          </li>
+          <li>
+            <strong>Deletion:</strong> use “Clear all data” in the extension, uninstall it, or clear your browser data.
+            Exported backups do not contain cached request headers.
+          </li>
+          <li>
+            <strong>Not affiliated with X Corp.</strong> Please comply with X’s Terms of Service and applicable law.
+          </li>
+          <li>
+            <strong>Contact:</strong> <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>
+          </li>
+        </ul>
+        <p>This English section is a summary. In case of conflict, the Chinese version above prevails.</p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div class="disclaimer">
+          <strong>关注整理所 / TidyFollows</strong><br />
+          本地运行的 X 关注关系整理工具。不是 X Corp. 的官方产品，与 X 无隶属关系。
+        </div>
+        <nav class="footer-links" aria-label="页脚导航">
+          <a href="/">首页</a>
+          <a href="/support">支持</a>
+          <a href="/privacy">隐私政策</a>
+          <a href="/terms">使用条款</a>
+          <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>
+        </nav>
+      </div>
+      <div class="wrap mt-18">© 2026 关注整理所</div>
+    </footer>
+  </body>
+</html>

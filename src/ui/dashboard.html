@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>关注整理所 · 控制台</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">整</span>
+          <div class="brand-text">
+            <strong>关注整理所</strong>
+            <span>TIDYFOLLOWS</span>
+          </div>
+        </div>
+
+        <nav class="nav" id="nav">
+          <a href="#/overview" data-route="overview"><span class="nav-ico">◎</span>概览</a>
+          <a href="#/relations" data-route="relations"><span class="nav-ico">☰</span>关系名单</a>
+          <a href="#/protect" data-route="protect"><span class="nav-ico">✦</span>特别关注</a>
+          <a href="#/backup" data-route="backup"><span class="nav-ico">⇅</span>备份与恢复</a>
+          <a href="#/settings" data-route="settings"><span class="nav-ico">⚙</span>设置</a>
+        </nav>
+
+        <div class="side-note">
+          <p>数据只保存在本机浏览器，清理浏览器数据前请先备份。</p>
+        </div>
+
+        <div class="side-account" id="sideAccount"></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="pageTitle">概览</h1>
+            <p id="pageSub">把关注理清楚，把时间留给值得的人。</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn ghost sm hidden" id="resumeBtn">继续任务</button>
+            <button class="btn primary sm" id="topDetect">开始检测</button>
+          </div>
+        </header>
+
+        <div class="banner hidden" id="banner"></div>
+
+        <section class="task-panel hidden" id="taskPanel">
+          <div class="task-head">
+            <div class="task-titles">
+              <span class="chip blue" id="taskType">检测</span>
+              <strong id="taskPhase">准备</strong>
+              <span class="task-time" id="taskTime"></span>
+            </div>
+            <div class="task-actions">
+              <button class="btn ghost xs hidden" id="taskResume">继续</button>
+              <button class="btn danger-ghost xs hidden" id="taskStop">停止</button>
+              <button class="btn ghost xs hidden" id="taskDismiss">收起</button>
+            </div>
+          </div>
+          <p class="task-message" id="taskMessage"></p>
+          <div class="task-meter">
+            <div class="progress"><span id="taskBar"></span></div>
+            <span class="task-count" id="taskCount"></span>
+          </div>
+          <p class="task-error hidden" id="taskError"></p>
+        </section>
+
+        <!-- ============ 概览 ============ -->
+        <section class="page" data-page="overview">
+          <div class="hero-grid">
+            <div class="card account-card" id="accountCard"></div>
+            <div class="card detect-card">
+              <div class="detect-copy">
+                <span class="eyebrow">DETECT</span>
+                <h2>从一次检测开始</h2>
+                <p>读取关注与粉丝名单，核对互关关系。先预览，再决定清理谁。</p>
+              </div>
+              <div class="detect-actions">
+                <button class="btn primary" id="detectBtn">开始检测</button>
+                <button class="btn ghost" id="refreshTemplatesBtn">刷新接口缓存</button>
+              </div>
+              <p class="micro" id="templateState">接口参数：未缓存</p>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            <button class="stat-card" data-goto="mutual">
+              <span class="stat-title">互关</span>
+              <strong data-stat="mutual">—</strong>
+              <span class="stat-note">互相在关注列表里</span>
+            </button>
+            <button class="stat-card rose" data-goto="notFollowingBack">
+              <span class="stat-title">未回关我</span>
+              <strong data-stat="notFollowingBack">—</strong>
+              <span class="stat-note">你关注了，对方没回关</span>
+            </button>
+            <button class="stat-card blue" data-goto="notFollowedByMe">
+              <span class="stat-title">我未回关</span>
+              <strong data-stat="notFollowedByMe">—</strong>
+              <span class="stat-note">对方关注了你，你没回关</span>
+            </button>
+            <button class="stat-card mint" data-goto="protected">
+              <span class="stat-title">特别关注</span>
+              <strong data-stat="protected">—</strong>
+              <span class="stat-note">批量清理时自动保留</span>
+            </button>
+          </div>
+
+          <div class="two-col">
+            <div class="card">
+              <div class="card-head">
+                <h3>最近记录</h3>
+                <button class="btn link" data-goto="relations">查看名单 →</button>
+              </div>
+              <div id="historyList" class="history-list"></div>
+            </div>
+            <div class="card soft-card">
+              <div class="card-head"><h3>怎么用</h3></div>
+              <ol class="steps">
+                <li><b>连接 X。</b>使用当前浏览器已登录的账号。</li>
+                <li><b>先检测。</b>首次建议 1,000 人，看清名单。</li>
+                <li><b>加入特别关注。</b>想留下的人先保护起来。</li>
+                <li><b>预览后清理。</b>批量取关前必须确认，不会自动执行。</li>
+              </ol>
+              <p class="hint">检测只读取关系，不会自动取关。所有记录保存在本机。</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 关系名单 ============ -->
+        <section class="page" data-page="relations">
+          <div class="panel">
+            <div class="list-toolbar">
+              <div class="segmented" id="filterTabs">
+                <button data-filter="notFollowingBack">未回关我</button>
+                <button data-filter="notFollowedByMe">我未回关</button>
+                <button data-filter="mutual">互关</button>
+                <button data-filter="protected">特别关注</button>
+                <button data-filter="all">全部</button>
+              </div>
+              <div class="toolbar-right">
+                <input class="input search" id="searchInput" placeholder="搜索昵称或 @handle" />
+                <select class="select page-size" id="pageSize">
+                  <option value="30">每页 30</option>
+                  <option value="50" selected>每页 50</option>
+                  <option value="100">每页 100</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="list-meta">
+              <span id="listCount">0 人</span>
+              <span class="list-hint" id="selectHint"></span>
+            </div>
+
+            <div id="relationList" class="relation-list"></div>
+            <div class="pager" id="pager"></div>
+          </div>
+        </section>
+
+        <!-- ============ 特别关注 ============ -->
+        <section class="page" data-page="protect">
+          <div class="card">
+            <div class="card-head">
+              <h3>特别关注</h3>
+              <span class="chip mint" id="protectCount">0 人</span>
+            </div>
+            <p class="hint" style="margin: 0 0 18px">
+              加入保护名单的人，批量取关时会自动跳过。可以填写 @handle 或主页链接。
+            </p>
+            <form class="protect-form" id="protectForm">
+              <input class="input" id="protectInput" placeholder="@handle 或 https://x.com/handle" />
+              <button class="btn primary" type="submit">加入保护</button>
+            </form>
+            <div id="protectList" class="protect-list"></div>
+          </div>
+        </section>
+
+        <!-- ============ 备份 ============ -->
+        <section class="page" data-page="backup">
+          <div class="backup-grid">
+            <div class="card">
+              <div class="card-head"><h3>导出备份</h3></div>
+              <p class="hint">导出账号、关系记录、特别关注与设置。建议在更新插件、清理浏览器之前导出一份。</p>
+              <button class="btn primary" id="exportBtn">导出 JSON 备份</button>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>导入恢复</h3></div>
+              <p class="hint">导入会覆盖同名的本机数据。导入前会先校验文件格式。</p>
+              <input type="file" id="importFile" accept="application/json" class="hidden" />
+              <button class="btn ghost" id="importBtn">选择备份文件</button>
+            </div>
+            <div class="card danger-zone">
+              <div class="card-head"><h3>清空本机数据</h3></div>
+              <p class="hint">删除账号连接、关系记录、特别关注与任务记录。此操作无法撤销，请先导出备份。</p>
+              <button class="btn danger-ghost" id="clearBtn">清空所有数据</button>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>存储状态</h3></div>
+              <div id="storageInfo" class="storage-info"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ 设置 ============ -->
+        <section class="page" data-page="settings">
+          <div class="settings-grid">
+            <div class="card">
+              <div class="card-head"><h3>任务节奏</h3><span class="chip">固定节奏</span></div>
+              <p class="hint">
+                当前版本固定为较慢的节奏，以降低触发 X 风控的概率；时间间隔暂不支持修改。
+              </p>
+              <form id="settingsForm" class="settings-form">
+                <div class="field">
+                  <label>读取名单间隔（毫秒）</label>
+                  <input class="input" type="number" name="pageDelayMs" disabled />
+                </div>
+                <div class="field">
+                  <label>核对互关间隔（毫秒）</label>
+                  <input class="input" type="number" name="lookupDelayMs" disabled />
+                </div>
+                <div class="two-fields">
+                  <div class="field">
+                    <label>取关最短间隔（毫秒）</label>
+                    <input class="input" type="number" name="unfollowMinDelayMs" disabled />
+                  </div>
+                  <div class="field">
+                    <label>取关最长间隔（毫秒）</label>
+                    <input class="input" type="number" name="unfollowMaxDelayMs" disabled />
+                  </div>
+                </div>
+                <p class="hint" style="margin: -4px 0 2px">以上为固定值，不可修改。</p>
+                <div class="field">
+                  <label>默认检测人数</label>
+                  <input class="input" type="number" name="limitDefault" min="100" max="100000" step="100" />
+                </div>
+                <button class="btn primary" type="submit">保存默认人数</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h3>接口参数</h3></div>
+              <p class="hint">
+                检测依赖 X 网页端自身的接口参数。首次检测会自动短暂打开你的「正在关注 / 关注我的人」页面来获取，
+                之后缓存 18 小时。遇到接口报错时，点下方按钮刷新。
+              </p>
+              <div class="kv" id="captureStatus">
+                <div><span>状态</span><b id="capState">未缓存</b></div>
+                <div><span>更新时间</span><b id="capTime">—</b></div>
+              </div>
+              <div class="inline-actions">
+                <button class="btn ghost" id="settingsRefreshCaps">刷新接口参数</button>
+                <button class="btn ghost" id="clearCaps">清除缓存</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h3>运行自检</h3><span class="chip" id="selfTestStatus">只读</span></div>
+              <p class="hint">
+                检查页面代理、登录状态、接口参数、关注前两页、粉丝第一页与互关核对；
+                写接口探测使用无效 ID，不会取关或修改任何账号。首次运行需要获取接口参数，可能需要一分钟。
+              </p>
+              <div class="inline-actions">
+                <button class="btn ghost" id="selfTestBtn">开始自检</button>
+                <button class="btn link hidden" id="copySelfTest">复制结果</button>
+              </div>
+              <div id="selfTestResult" class="selftest-result"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h3>关于关注整理所</h3></div>
+              <p class="hint">
+                互关检测与关注清理工具。所有数据保存在本机浏览器，不需要购买 X API，不上传任何服务器。
+                请合理控制操作频率，遵守 X 的使用规则。
+              </p>
+              <div class="kv">
+                <div><span>版本</span><b id="aboutVersion">—</b></div>
+                <div><span>运行方式</span><b>Chrome 扩展 · Manifest V3</b></div>
+                <div><span>数据位置</span><b>chrome.storage.local</b></div>
+              </div>
+              <p class="hint">
+                <a href="https://tidyfollows.1475369.xyz/privacy" target="_blank" rel="noopener">隐私政策</a>
+                ·
+                <a href="https://tidyfollows.1475369.xyz/support" target="_blank" rel="noopener">支持与故障排查</a>
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="select-bar hidden" id="selectBar">
+      <div class="select-bar-inner">
+        <div>
+          <strong id="selectedCount">0</strong>
+          <span>人已选择</span>
+          <span class="select-note" id="selectNote"></span>
+        </div>
+        <div class="select-actions">
+          <button class="btn ghost sm" id="clearSelection">取消选择</button>
+          <button class="btn danger sm" id="unfollowSelected">批量取关</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-root" id="modalRoot"></div>
+    <div class="toast-wrap" id="toasts"></div>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>

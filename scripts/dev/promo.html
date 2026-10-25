@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 440px; height: 280px; overflow: hidden; }
+      body {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 18px;
+        padding: 34px 36px;
+        background: linear-gradient(135deg, #f7f4ee 0%, #eaf3fa 70%, #e6f6f0 100%);
+        font-family: "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, sans-serif;
+        color: #131a24;
+      }
+      .glow {
+        position: absolute;
+        width: 260px; height: 260px; border-radius: 50%;
+        right: -90px; top: -110px;
+        background: radial-gradient(circle, rgba(46,125,255,0.22), rgba(46,125,255,0));
+      }
+      .glow.two {
+        left: -120px; bottom: -150px;
+        background: radial-gradient(circle, rgba(19,155,117,0.16), rgba(19,155,117,0));
+      }
+      .brand { display: flex; align-items: center; gap: 14px; position: relative; }
+      .brand img { width: 56px; height: 56px; border-radius: 15px; box-shadow: 0 8px 18px rgba(46,125,255,0.22); }
+      .brand h1 { font-size: 30px; line-height: 1.15; letter-spacing: -0.3px; }
+      .brand small {
+        display: block; margin-top: 3px;
+        font-size: 10px; font-weight: 700; letter-spacing: 3.2px; color: #5f6b7a;
+      }
+      .tagline { position: relative; font-size: 18px; font-weight: 600; line-height: 1.5; color: #2c3746; }
+      .chips { display: flex; gap: 8px; position: relative; }
+      .chip {
+        padding: 5px 11px; border-radius: 999px;
+        font-size: 11.5px; font-weight: 600;
+        background: rgba(255,255,255,0.78);
+        border: 1px solid rgba(19,26,36,0.08);
+        color: #2c3746;
+      }
+      .chip.blue { background: #e8f4fd; color: #2e7dff; border-color: rgba(46,125,255,0.18); }
+      .chip.mint { background: #e6f6f0; color: #139b75; border-color: rgba(19,155,117,0.18); }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+    <div class="glow two"></div>
+    <div class="brand">
+      <img src="../../icons/icon128.png" alt="" />
+      <div>
+        <h1>关注整理所</h1>
+        <small>TIDYFOLLOWS</small>
+      </div>
+    </div>
+    <p class="tagline">把关注理清楚，<br />把时间留给值得的人。</p>
+    <div class="chips">
+      <span class="chip blue">互关检测</span>
+      <span class="chip">本地运行</span>
+      <span class="chip mint">你确认后才清理</span>
+    </div>
+  </body>
+</html>

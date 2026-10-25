@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tidyfollows.1475369.xyz/sitemap.xml

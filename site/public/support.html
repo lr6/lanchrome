@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>支持与故障排查 — 关注整理所 / TidyFollows</title>
+    <meta name="description" content="关注整理所（TidyFollows）的支持与故障排查：账号连接、接口参数、限流、数据备份与删除、手动安装。" />
+    <link rel="icon" href="/assets/icon128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">
+          <img src="/assets/icon128.png" alt="" width="32" height="32" />
+          <span>关注整理所<small>TIDYFOLLOWS</small></span>
+        </a>
+        <nav class="site-nav" aria-label="主导航">
+          <a href="/">首页</a>
+          <a href="/support" aria-current="page">支持</a>
+          <a href="/privacy">隐私政策</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="page-head">
+        <h1>支持与故障排查</h1>
+        <p>先跑一次「设置 → 运行自检」，多数问题可以在那里定位。</p>
+      </div>
+
+      <article class="prose">
+        <h2>联系支持</h2>
+        <p>
+          邮箱：<a href="mailto:support@1475369.xyz">support@1475369.xyz</a>，通常 3 个工作日内回复。为了更快定位问题，请附上：
+        </p>
+        <ul>
+          <li>扩展版本号（设置页底部显示）；</li>
+          <li>Chrome 版本与操作系统；</li>
+          <li>「运行自检」的结果（点「复制结果」后粘贴）；</li>
+          <li>问题发生前的操作步骤，以及界面上出现的错误提示。</li>
+        </ul>
+        <p class="note blue">
+          <span
+            ><strong>不要发送备份文件</strong>备份包含你的账号和关系记录。排查问题只需要自检结果，不需要备份文件。</span
+          >
+        </p>
+
+        <h2>常见问题</h2>
+
+        <details class="faq" open>
+          <summary>连接 X 账号失败</summary>
+          <div class="answer">
+            <p>确认当前浏览器已登录 <a href="https://x.com">x.com</a>，并且登录状态没有过期。必要时重新登录后再点「连接 X 账号」。</p>
+            <p>扩展不会索要密码，也不会读取你的登录凭据，只复用浏览器里已有的网页会话。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>提示「未能获取 X 接口参数」</summary>
+          <div class="answer">
+            <p>在「设置 → 接口参数」点「刷新接口参数」，或手动打开一次自己的「正在关注」页面，再重新检测。</p>
+            <p>接口参数会缓存 18 小时，过期后会自动重新获取。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>读取关注第一页返回 403 / 404</summary>
+          <div class="answer">
+            <p>通常是接口参数或 transaction-id 过期。点「刷新接口参数」后重试。如果仍然失败，可能是 X 更新了网页端接口，请把自检结果发给支持。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>读取名单返回 429（限流）</summary>
+          <div class="answer">
+            <p>说明当前请求被 X 限流。扩展会自动读取响应里的恢复时间并等待；自检结果里也会显示恢复时间。等限流结束后再重试，期间不要频繁刷新。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>「我未回关」显示为 — 或结果不完整</summary>
+          <div class="answer">
+            <p>粉丝名单接口可能不可用，或者只读取到了第一页。扩展会继续用互关核对完成「未回关我」的检测；「我未回关」则标记为不可用或部分结果。</p>
+            <p>这不影响取关已有名单里的人，但统计只代表本次扫描范围。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>检测解析到 0 人</summary>
+          <div class="answer">
+            <p>X 可能返回了登录页或空数据。确认账号状态正常，刷新接口参数后再试。如果你确实没有关注任何人，也会得到 0 人的结果。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>自检提示写接口探测 404</summary>
+          <div class="answer">
+            <p>自检会用一个无效的用户 ID 探测取关接口，不会改动任何账号。返回 404 只表示这个端点可能已变更或废弃，并不代表你的账号有问题。</p>
+            <p>在正式批量取关前，建议先对少量账号操作一次，确认实际行为。如果确实失败，请把自检结果发给支持。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>任务中断了，怎么继续？</summary>
+          <div class="answer">
+            <p>任务运行期间不要关闭或刷新专用执行页，也不要关闭浏览器。中断后打开控制台，点「继续任务」即可从上次进度续跑。</p>
+            <p>浏览器重启后，旧任务会被标记为可继续，而不是继续在后台静默执行。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>会把我的关注全部自动取关吗？</summary>
+          <div class="answer">
+            <p>不会。检测只读取关系，不会执行任何写操作。取关必须由你勾选账号、点击「批量取关」并在预览里二次确认，之后才会逐个执行。特别关注的人始终跳过。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>数据保存在哪里？怎么删除？</summary>
+          <div class="answer">
+            <p>全部保存在本机浏览器的 <code>chrome.storage.local</code>，不会上传到服务器。删除方式：扩展内「备份与恢复 → 清空所有数据」、卸载扩展，或清除浏览器数据。</p>
+            <p>删除前建议先导出 JSON 备份。详见<a href="/privacy">隐私政策</a>。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>怎么手动安装（开发者模式）？</summary>
+          <div class="answer">
+            <ol>
+              <li>下载并解压扩展目录，确认 <code>manifest.json</code> 就在这一层目录里。</li>
+              <li>打开 <code>chrome://extensions</code>，右上角开启「开发者模式」。</li>
+              <li>点击「加载已解压的扩展程序」，选择包含 <code>manifest.json</code> 的目录。</li>
+              <li>登录 x.com，点击扩展图标，选择「连接 X 账号」。</li>
+            </ol>
+            <p>更新时用新文件替换原目录，然后在扩展管理页点「重新加载」。不要先卸载，以免丢失本机数据。</p>
+          </div>
+        </details>
+
+        <details class="faq">
+          <summary>为什么需要这些权限？</summary>
+          <div class="answer">
+            <p>
+              扩展需要在本机保存关系记录（<code>storage</code>）、打开专用 x.com 执行页（<code>tabs</code>）、补注入脚本（<code>scripting</code>）、定时清理临时标签页（<code>alarms</code>），并访问 x.com / twitter.com 读取你自己的关注关系。扩展没有 <code>cookies</code> 权限，也没有任何统计或广告代码。
+            </p>
+            <p>逐项说明见<a href="/privacy#permissions">隐私政策的权限部分</a>。</p>
+          </div>
+        </details>
+
+        <h2>安全报告</h2>
+        <p>
+          如果你发现安全问题（例如数据外传、XSS、权限滥用），请发送邮件到
+          <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>，并在标题里注明「安全」。请不要在公开渠道披露未修复的问题。
+        </p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div class="disclaimer">
+          <strong>关注整理所 / TidyFollows</strong><br />
+          本地运行的 X 关注关系整理工具。不是 X Corp. 的官方产品，与 X 无隶属关系。
+        </div>
+        <nav class="footer-links" aria-label="页脚导航">
+          <a href="/">首页</a>
+          <a href="/support">支持</a>
+          <a href="/privacy">隐私政策</a>
+          <a href="/terms">使用条款</a>
+          <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>
+        </nav>
+      </div>
+      <div class="wrap mt-18">© 2026 关注整理所</div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>关注整理所</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="pop">
+      <header class="pop-head">
+        <div class="brand">
+          <span class="brand-mark">整</span>
+          <div class="brand-text">
+            <strong>关注整理所</strong>
+            <span>TIDYFOLLOWS</span>
+          </div>
+        </div>
+        <span class="status" id="statusChip"><span class="dot"></span>本机</span>
+      </header>
+
+      <section class="account" id="accountBox">
+        <div class="account-skeleton"></div>
+      </section>
+
+      <section class="stats" id="statsBox">
+        <button class="stat" data-filter="mutual">
+          <span class="stat-label">互关</span>
+          <strong data-stat="mutual">—</strong>
+        </button>
+        <button class="stat" data-filter="notFollowingBack">
+          <span class="stat-label">未回关我</span>
+          <strong data-stat="notFollowingBack">—</strong>
+        </button>
+        <button class="stat" data-filter="notFollowedByMe">
+          <span class="stat-label">我未回关</span>
+          <strong data-stat="notFollowedByMe">—</strong>
+        </button>
+      </section>
+
+      <section class="task-card hidden" id="taskBox">
+        <div class="task-top">
+          <span class="chip blue" id="taskPhase">准备</span>
+          <span class="task-count" id="taskCount"></span>
+        </div>
+        <p class="task-msg" id="taskMsg"></p>
+        <div class="progress"><span id="taskBar"></span></div>
+      </section>
+
+      <div class="actions">
+        <button class="btn primary block" id="openDashboard">打开控制台</button>
+        <div class="actions-row">
+          <button class="btn ghost" id="quickDetect">开始检测</button>
+          <button class="btn ghost" id="openRelations">查看名单</button>
+        </div>
+      </div>
+
+      <footer class="pop-foot">
+        <span>数据仅保存在本机</span>
+        <span id="version">v0.1.0</span>
+      </footer>
+    </div>
+
+    <div class="toast-wrap" id="toasts"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

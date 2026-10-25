@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>关注整理所 / TidyFollows — X 互关检测与关注清理</title>
+    <meta
+      name="description"
+      content="关注整理所（TidyFollows）是一款本地运行的 Chrome 扩展，帮你检测 X 上的互关关系，找出没有回关你的人，在你确认后逐个清理。数据只保存在本机浏览器。"
+    />
+    <link rel="icon" href="/assets/icon128.png" />
+    <link rel="apple-touch-icon" href="/assets/icon128.png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">
+          <img src="/assets/icon128.png" alt="" width="32" height="32" />
+          <span>关注整理所<small>TIDYFOLLOWS</small></span>
+        </a>
+        <nav class="site-nav" aria-label="主导航">
+          <a href="/">首页</a>
+          <a href="/support">支持</a>
+          <a href="/privacy">隐私政策</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <section class="hero">
+          <span class="eyebrow">Chrome 扩展 · 本地运行</span>
+          <h1>把关注理清楚，<br />把时间留给值得的人。</h1>
+          <p class="lead">
+            关注整理所（TidyFollows）检测你在 X 上的互关关系，找出没有回关你的人，
+            在你勾选并确认后逐个清理。账号、名单和任务记录只保存在本机浏览器。
+          </p>
+          <div class="actions">
+            <a class="btn primary" href="/privacy">查看隐私政策</a>
+            <a class="btn" href="/support">使用说明与支持</a>
+          </div>
+        </section>
+      </div>
+
+      <section class="block alt">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>它做什么</h2>
+            <p>只处理你自己的关注关系，所有清理动作都需要你逐条确认。</p>
+          </div>
+          <div class="grid">
+            <article class="card">
+              <span class="tag">互关检测</span>
+              <h3>看清三类关系</h3>
+              <p>读取你自己的「正在关注」与「关注我的人」名单，再用接口精确核对，分成互关、未回关我、我未回关。</p>
+            </article>
+            <article class="card">
+              <span class="tag">用户确认</span>
+              <h3>勾选后才清理</h3>
+              <p>先预览名单，再勾选要清理的账号，二次确认后逐个执行。取关间隔固定为 4–8 秒随机，可随时停止。</p>
+            </article>
+            <article class="card">
+              <span class="tag">特别关注</span>
+              <h3>想留下的人不会被碰</h3>
+              <p>把重要账号加入特别关注，批量清理时自动跳过。永远优先于任何批量操作。</p>
+            </article>
+            <article class="card">
+              <span class="tag">本地数据</span>
+              <h3>随时备份、随时删除</h3>
+              <p>记录保存在本机浏览器，可导出 JSON 备份；卸载扩展或在扩展内清空数据即可删除。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>怎么用</h2>
+            <p>首次建议先检测 1,000 人，确认名单后再清理。</p>
+          </div>
+          <ol class="steps">
+            <li>
+              <strong>连接 X 账号</strong>
+              <span>在浏览器里登录 x.com，打开扩展，点击「连接 X 账号」。扩展使用你当前的网页会话，不需要 X API Key。</span>
+            </li>
+            <li>
+              <strong>开始检测</strong>
+              <span>选择 1,000 / 3,000 / 全部。首次检测会短暂打开两个后台标签页，用于获取 X 网页端的接口参数。</span>
+            </li>
+            <li>
+              <strong>保护想留下的人</strong>
+              <span>在「关系名单」里查看结果，把重要的人加入「特别关注」。</span>
+            </li>
+            <li>
+              <strong>勾选、预览、确认</strong>
+              <span>选中要清理的账号，点「批量取关」，在预览里确认名单。取关逐条执行，随时可以停止，中断后可以继续。</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="block alt">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>隐私优先</h2>
+            <p>没有自建服务器，没有统计、广告或远程代码。</p>
+          </div>
+          <div class="grid three">
+            <article class="card">
+              <h3>不上传名单</h3>
+              <p>关注关系、账号信息和任务进度只写入本机 <code>chrome.storage.local</code>，不会发送到我们的服务器。</p>
+            </article>
+            <article class="card">
+              <h3>不收集统计</h3>
+              <p>扩展不包含分析 SDK、广告或跟踪代码，也不读取与功能无关的浏览记录。</p>
+            </article>
+            <article class="card">
+              <h3>权限最小化</h3>
+              <p>只申请保存数据、管理专用 x.com 执行页和定时清理所需的权限，不含 <code>cookies</code> 权限。</p>
+            </article>
+          </div>
+          <p class="note blue mt-18">
+            <span><strong>完整说明</strong>数据处理方式、保留期限和删除方式见 <a href="/privacy">隐私政策</a>。</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <div class="section-head">
+            <h2>使用前请了解</h2>
+          </div>
+          <div class="grid">
+            <article class="card">
+              <h3>不是 X 官方产品</h3>
+              <p>本扩展与 X Corp. 没有隶属关系。请遵守 X 的服务条款和当地法律法规，合理控制操作频率。</p>
+            </article>
+            <article class="card">
+              <h3>依赖 X 网页端接口</h3>
+              <p>X 更新接口后，检测或取关可能暂时失效。可在「设置 → 刷新接口参数」重试，或联系支持。</p>
+            </article>
+            <article class="card">
+              <h3>存在账号风险</h3>
+              <p>短时间大量取关可能触发限流或临时限制。建议分批进行，不要频繁执行。</p>
+            </article>
+            <article class="card">
+              <h3>先备份再操作</h3>
+              <p>清理浏览器数据、卸载扩展或换电脑前，请先在「备份与恢复」导出 JSON。</p>
+            </article>
+          </div>
+          <p class="note mt-18">
+            <span
+              ><strong>安装方式</strong>本扩展通过 Chrome 应用商店分发。上架后在商店搜索「关注整理所」即可安装，也可以在
+              <a href="/support">支持页</a>查看手动安装步骤。</span
+            >
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <div class="disclaimer">
+          <strong>关注整理所 / TidyFollows</strong><br />
+          本地运行的 X 关注关系整理工具。不是 X Corp. 的官方产品，与 X 无隶属关系。
+        </div>
+        <nav class="footer-links" aria-label="页脚导航">
+          <a href="/">首页</a>
+          <a href="/support">支持</a>
+          <a href="/privacy">隐私政策</a>
+          <a href="/terms">使用条款</a>
+          <a href="mailto:support@1475369.xyz">support@1475369.xyz</a>
+        </nav>
+      </div>
+      <div class="wrap mt-18">© 2026 关注整理所</div>
+    </footer>
+  </body>
+</html>

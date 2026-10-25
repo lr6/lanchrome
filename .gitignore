@@ -1,0 +1,7 @@
+dist/
+.playwright-cli/
+.playwright-mcp/
+.DS_Store
+.cloudflare/
+site/node_modules/
+site/.cloudflare/

@@ -1,0 +1,14 @@
+{
+  "name": "tidyfollows",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "TidyFollows privacy policy and support site",
+  "devDependencies": {
+    "cf": "^1.0.0-beta.21",
+    "wrangler": "^4.152.0"
+  },
+  "scripts": {
+    "deploy": "cf deploy"
+  }
+}
