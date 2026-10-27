@@ -1,6 +1,6 @@
 # 关注整理所 / TidyFollows — 上线前规划
 
-> 当前版本：v1.0.0（商店候选版）
+> 当前版本：v1.0.2（商店候选版）
 > 本文用于后续讨论，不代表已决定上线时间。
 
 ## 1. 目标与原则
@@ -187,4 +187,4 @@
 - [ ] 写接口误报修复
 - [ ] 粉丝分页/部分结果的产品决策
 - [ ] 英文 listing（如果面向海外）
-- [x] ZIP 包：`./scripts/package.sh` 生成 `dist/tidyfollows-1.0.0.zip`
+- [x] ZIP 包：`./scripts/package.sh` 生成 `dist/tidyfollows-1.0.2.zip`

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "关注整理所 · 互关检测与关注清理",
   "short_name": "关注整理所",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "检测 X 互关关系，找出没有回关你的人，在你确认后逐个清理。数据全部保存在本机浏览器。",
   "minimum_chrome_version": "111",
   "permissions": [

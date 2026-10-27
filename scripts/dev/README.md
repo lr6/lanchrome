@@ -25,11 +25,13 @@
 |---|---|
 | `ui-test.mjs` | 注入演示数据，逐页截图，检查各页面、勾选、导出过滤、清空数据、弹窗 |
 | `pipeline-test.mjs` | 用 CDP `Fetch` 伪造 x.com 文档与 GraphQL 响应，端到端跑「检测 → 分页 → 互关核对 → 取关」 |
+| `followers-pagination-test.mjs` | 模拟粉丝后续页重放失败，验证小窗口滚动加载能把第 2 页补全 |
 | `degrade-test.mjs` | 模拟粉丝接口 401，验证降级：仍完成「未回关我」，`我未回关` 置为不可用 |
 
 ```bash
 node scripts/dev/ui-test.mjs
 node scripts/dev/pipeline-test.mjs
+node scripts/dev/followers-pagination-test.mjs
 node scripts/dev/degrade-test.mjs
 ```
 

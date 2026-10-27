@@ -34,12 +34,34 @@ const followersJson = {
       { entryId: 'user-3', content: { itemContent: { user_results: { result: { rest_id: '9000003', core: { screen_name: 'carol', name: 'Carol' } } } } } },
       { entryId: 'cursor-bottom-2', content: { cursorType: 'Bottom', value: 'CURSOR-2' } }
     ] },
+    // Top 仅表示上方没有更新，不能当作列表到底；游标仍应继续读取。
     { type: 'TimelineTerminateTimeline', direction: 'Top' }
   ] } } } }
 };
 
+const followersPage2Json = {
+  data: { user: { result: { timeline: { instructions: [
+    { type: 'TimelineAddEntries', entries: [
+      { entryId: 'user-4', content: { itemContent: { user_results: { result: { rest_id: '9000004', core: { screen_name: 'dave', name: 'Dave' } } } } } }
+    ] },
+    { type: 'TimelineTerminateTimeline', direction: 'Bottom' }
+  ] } } } }
+};
+
+// 第 2 页故意只有重复用户，但游标继续前进；检测不能在这里提前结束。
 const page2Json = {
   data: { user: { result: { timeline: { instructions: [
+    { type: 'TimelineAddEntries', entries: [
+      { entryId: 'user-1-duplicate', content: { itemContent: { user_results: { result: { rest_id: '9000001', core: { screen_name: 'alice', name: 'Alice' } } } } } },
+      { entryId: 'cursor-bottom-2', content: { cursorType: 'Bottom', value: 'CURSOR-2' } }
+    ] }
+  ] } } } }
+};
+const page3Json = {
+  data: { user: { result: { timeline: { instructions: [
+    { type: 'TimelineAddEntries', entries: [
+      { entryId: 'user-2-again', content: { itemContent: { user_results: { result: { rest_id: '9000002', core: { screen_name: 'bob', name: 'Bob' } } } } } }
+    ] },
     { type: 'TimelineTerminateTimeline', direction: 'Bottom' }
   ] } } } }
 };
@@ -58,13 +80,20 @@ fake.ws.addEventListener('message',async (ev)=>{
     body=Buffer.from('<!doctype html><html><head><title>fake x</title></head><body><div id="react-root"></div></body></html>').toString('base64');
   } else if(url.includes('/i/api/graphql/')&&/\/Following(\?|$)/.test(url)){
     status=200;headers=[{name:'content-type',value:'application/json'},{name:'x-rate-limit-remaining',value:'100'}];
-    body=Buffer.from(JSON.stringify(url.includes('cursor=')?page2Json:followingJson)).toString('base64');
+    const decoded=decodeURIComponent(url);
+    const cursor=(decoded.match(/"cursor":"([^"]+)"/)||[])[1]||null;
+    const page=!cursor?followingJson:cursor==='CURSOR-1'?page2Json:page3Json;
+    body=Buffer.from(JSON.stringify(page)).toString('base64');
+  } else if(url.includes('/i/api/graphql/')&&/\/Followers(\?|$)/.test(url)){
+    status=200;headers=[{name:'content-type',value:'application/json'},{name:'x-rate-limit-remaining',value:'100'}];
+    body=Buffer.from(JSON.stringify(followersPage2Json)).toString('base64');
   } else if(url.includes('/i/api/1.1/friendships/lookup.json')){
     status=200;headers=[{name:'content-type',value:'application/json'},{name:'x-rate-limit-remaining',value:'100'}];
     body=Buffer.from(JSON.stringify([
       {id_str:'9000001',connections:['following']},
       {id_str:'9000002',connections:['following','followed_by']},
-      {id_str:'9000003',connections:['followed_by']}
+      {id_str:'9000003',connections:['followed_by']},
+      {id_str:'9000004',connections:['followed_by']}
     ])).toString('base64');
   } else if(url.includes('/i/api/1.1/friendships/destroy.json')){
     status=200;headers=[{name:'content-type',value:'application/json'}];
@@ -147,6 +176,20 @@ console.log('HISTORY', JSON.stringify(hist));
 const prob=[...fake.events,...dash.events].filter(e=>e.method==='Runtime.exceptionThrown').map(e=>e.params.exceptionDetails.exception?.description||e.params.exceptionDetails.text);
 console.log('PROBLEMS', prob.length?prob:'(none)');
 
+const followingReqs=reqs.filter((u)=>/\/Following(\?|$)/.test(u));
+const ok=
+  dt.status==='done' &&
+  dt.result &&
+  dt.result.scannedFollowing===2 &&
+  dt.result.scannedFollowers===3 &&
+  dt.result.followingPartial===false &&
+  dt.result.followersPartial===false &&
+  followingReqs.length===3 &&
+  ut.status==='done' &&
+  ut.result && ut.result.ok===1 &&
+  prob.length===0;
+console.log(ok?'PASS: 分页、互关核对与取关流程正常':'FAIL: 检测或取关流程异常');
+
 fake.ws.close();dash.ws.close();
 for(const t of (await j('/json/list')).filter(t=>t.type==='page'&&(t.url.startsWith('chrome-extension://')||t.url.startsWith('https://x.com')))) await fetch(`http://127.0.0.1:${PORT}/json/close/${t.id}`);
-process.exit(0);
+process.exit(ok?0:1);

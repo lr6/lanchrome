@@ -116,11 +116,27 @@ async function setWarmups(map) {
   } catch (_) {}
 }
 
+async function getHarvestTabs() {
+  try {
+    const out = await chrome.storage.session.get('lanHarvestTabs');
+    return out.lanHarvestTabs || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function setHarvestTabs(map) {
+  try {
+    await chrome.storage.session.set({ lanHarvestTabs: map });
+  } catch (_) {}
+}
+
 async function ensureWorkerTab() {
   const warmups = await getWarmups();
+  const harvests = await getHarvestTabs();
   const saved = await store.get('lanWorkerTab', null);
 
-  if (saved && saved.tabId && !warmups[saved.tabId]) {
+  if (saved && saved.tabId && !warmups[saved.tabId] && !harvests[saved.tabId]) {
     try {
       const tab = await chrome.tabs.get(saved.tabId);
       if (tab && tab.url && X_TAB.test(tab.url)) return tab.id;
@@ -128,7 +144,7 @@ async function ensureWorkerTab() {
   }
 
   for (const id of readyTabs) {
-    if (warmups[id]) continue;
+    if (warmups[id] || harvests[id]) continue;
     try {
       const tab = await chrome.tabs.get(id);
       if (tab && tab.url && X_TAB.test(tab.url)) {
@@ -206,6 +222,81 @@ async function openWarmupTabs(account, { force = false } = {}) {
   }
   await setWarmups(warmups);
   return opened;
+}
+
+/* -------------------------------------------------------------------- */
+/* 粉丝页滚动采集                                                        */
+/* -------------------------------------------------------------------- */
+
+async function closeHarvestTab(tabId) {
+  const harvests = await getHarvestTabs();
+  if (harvests[tabId]) {
+    delete harvests[tabId];
+    await setHarvestTabs(harvests);
+  }
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch (_) {}
+}
+
+async function openHarvestTab(account, taskId) {
+  // 同一时间只保留一个采集窗口。先清空登记再关标签页，
+  // 避免旧标签页的 onRemoved 把错误状态写进本次任务。
+  const harvests = await getHarvestTabs();
+  if (Object.keys(harvests).length) {
+    await setHarvestTabs({});
+    for (const id of Object.keys(harvests)) {
+      try {
+        await chrome.tabs.remove(Number(id));
+      } catch (_) {}
+    }
+  }
+
+  const url = `https://x.com/${encodeURIComponent(account.screenName)}/followers`;
+  // focused:false 的非最小化窗口仍然算「可见」，IntersectionObserver/滚动加载才会工作，
+  // 同时不会抢走用户当前窗口的焦点。
+  const win = await chrome.windows.create({
+    url,
+    type: 'popup',
+    focused: false,
+    width: 420,
+    height: 560,
+    top: 60,
+    left: 60,
+  });
+  let tab = win && win.tabs && win.tabs[0];
+  if (!tab && win && win.id) {
+    const tabs = await chrome.tabs.query({ windowId: win.id });
+    tab = tabs && tabs[0];
+  }
+  if (!tab) {
+    if (win && win.id) chrome.windows.remove(win.id).catch(() => {});
+    throw new Error('无法打开粉丝页面');
+  }
+
+  await setHarvestTabs({
+    [tab.id]: { taskId, windowId: win.id, at: Date.now() },
+  });
+  // 避免被浏览器的内存节省功能回收
+  chrome.tabs.update(tab.id, { autoDiscardable: false }).catch(() => {});
+  try {
+    await waitForReady(tab.id, 35000);
+  } catch (err) {
+    await closeHarvestTab(tab.id);
+    throw err;
+  }
+  return tab.id;
+}
+
+async function sendHarvestCommand(tabId, command, payload) {
+  const message = { type: 'lan:cmd', command, payload };
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (_) {
+    await injectContentScripts(tabId);
+    await waitForReady(tabId, 10000).catch(() => {});
+    return chrome.tabs.sendMessage(tabId, message);
+  }
 }
 
 async function mergeCapture(operation) {
@@ -544,6 +635,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const opened = await openWarmupTabs(account, { force: !!msg.force });
         return { ok: true, opened };
       }
+      case 'lan:harvest-followers': {
+        const account = msg.account || (await getActiveAccount());
+        if (!account || !account.screenName) throw new Error('请先连接 X 账号');
+        const tabId = await openHarvestTab(account, msg.taskId);
+        const started = await sendHarvestCommand(tabId, 'harvest', {
+          taskId: msg.taskId,
+          limit: msg.limit,
+        });
+        if (!started || !started.ok) {
+          await closeHarvestTab(tabId);
+          throw new Error((started && started.error) || '无法开始读取粉丝页面');
+        }
+        return { ok: true, tabId };
+      }
+      case 'lan:harvest-done': {
+        if (sender.tab && sender.tab.id) await closeHarvestTab(sender.tab.id);
+        return { ok: true };
+      }
+      case 'lan:harvest-stop': {
+        const harvests = await getHarvestTabs();
+        for (const [id, info] of Object.entries(harvests)) {
+          if (info.taskId !== msg.taskId) continue;
+          try {
+            await sendHarvestCommand(Number(id), 'harvest-stop', {});
+          } catch (_) {}
+          setTimeout(() => {
+            chrome.tabs.remove(Number(id)).catch(() => {});
+          }, 4000);
+          delete harvests[id];
+        }
+        await setHarvestTabs(harvests);
+        return { ok: true };
+      }
       case 'lan:connect': {
         const account = await sendToWorker('connect');
         if (!account || !account.ok || !account.account) {
@@ -615,6 +739,30 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     delete warmups[tabId];
     await setWarmups(warmups);
   }
+
+  // 采集窗口被手动关闭时，通知正在等待的检测任务，别让它一直等到超时
+  const harvests = await getHarvestTabs();
+  const harvestInfo = harvests[tabId];
+  if (harvestInfo) {
+    delete harvests[tabId];
+    await setHarvestTabs(harvests);
+    const key = `lanHarvest:${harvestInfo.taskId}`;
+    const current = await store.get(key, null);
+    if (!current || !current.done) {
+      await store.set({
+        [key]: {
+          taskId: harvestInfo.taskId,
+          op: 'Followers',
+          count: (current && current.count) || 0,
+          pages: (current && current.pages) || 0,
+          done: true,
+          error: '粉丝页面已关闭',
+          users: [],
+          at: Date.now(),
+        },
+      });
+    }
+  }
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
@@ -646,6 +794,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       }
     }
     if (changed) await setWarmups(warmups);
+  } catch (_) {}
+
+  // 清理异常残留的粉丝采集窗口
+  try {
+    const harvests = await getHarvestTabs();
+    let changed = false;
+    for (const [id, info] of Object.entries(harvests)) {
+      if (Date.now() - info.at > 35 * 60 * 1000) {
+        delete harvests[id];
+        changed = true;
+        chrome.tabs.remove(Number(id)).catch(() => {});
+      }
+    }
+    if (changed) await setHarvestTabs(harvests);
   } catch (_) {}
 
   // 长时间无进展的任务视为中断

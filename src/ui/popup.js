@@ -132,14 +132,9 @@ async function connect() {
 
 $('#openDashboard').addEventListener('click', () => openDashboard(''));
 $('#openRelations').addEventListener('click', () => openDashboard('#/relations'));
-$('#quickDetect').addEventListener('click', async () => {
-  const limit = overview && overview.settings ? overview.settings.limitDefault : 1000;
-  const res = await send('lan:start-detect', { options: { limit } });
-  if (!res.ok) {
-    toast(res.error || '启动失败', true);
-    return;
-  }
-  openDashboard('#/overview');
+$('#quickDetect').addEventListener('click', () => {
+  // 不在弹窗里静默使用默认上限，先让用户明确选择「1,000 / 3,000 / 全部」。
+  openDashboard('#detect');
 });
 
 document.querySelectorAll('[data-filter]').forEach((el) => {

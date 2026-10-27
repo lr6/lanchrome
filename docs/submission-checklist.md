@@ -1,4 +1,4 @@
-# Chrome Web Store 提交清单 — v1.0.0
+# Chrome Web Store 提交清单 — v1.0.2
 
 > 配合 `docs/store-listing.md` 使用。所有 URL 已于 2026-10-25 验证可公开访问。
 
@@ -14,12 +14,12 @@
 
 | 项 | 值 |
 |---|---|
-| 文件 | `dist/tidyfollows-1.0.0.zip` |
+| 文件 | `dist/tidyfollows-1.0.2.zip` |
 | SHA256 | `9dc0d6d9922e86197dc1aa846a29ff7dfebf95d3529f106ab16db55e67d7b7cd` |
-| 版本 | 1.0.0 |
+| 版本 | 1.0.2 |
 | 内容 | 仅 `manifest.json`、`background.js`、`src/`、`icons/` |
 
-上传后确认后台显示的版本是 1.0.0，名称是「关注整理所 · 互关检测与关注清理」。
+上传后确认后台显示的版本是 1.0.2，名称是「关注整理所 · 互关检测与关注清理」。
 
 ## 2. Store listing
 

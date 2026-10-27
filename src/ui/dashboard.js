@@ -345,11 +345,11 @@ function renderOverview() {
       <div class="acc-foot">
         <span>${
           state.scan
-            ? `本次检测 ${fmtNum(state.scan.scannedFollowing)} 关注 · ${
+            ? `本次检测 ${fmtNum(state.scan.scannedFollowing)} 关注${state.scan.followingPartial ? '（部分）' : ''} · ${
                 state.scan.followersUnavailable
                   ? '粉丝未获取'
                   : `${fmtNum(state.scan.scannedFollowers)} 粉丝${state.scan.followersPartial ? '（部分）' : ''}`
-              }${state.scan.limit ? `（上限 ${fmtNum(state.scan.limit)}）` : ''}`
+              }${state.scan.limited ? `（达到上限 ${fmtNum(state.scan.limit)}）` : ''}`
             : `本机记录 ${fmtNum(stats.total)} 人`
         } · 特别关注 ${fmtNum(stats.protected)} 人</span>
         <button class="btn link" id="accConnect">重新连接</button>
@@ -483,6 +483,8 @@ function renderRelations() {
     state.scan ? ` · 最近检测 ${fmtTime(state.scan.at)}` : ''
   }${state.scan && state.scan.followersUnavailable ? ' · 粉丝名单未获取' : ''}${
     state.scan && state.scan.followersPartial ? ' · 粉丝名单不完整' : ''
+  }${state.scan && state.scan.followingPartial ? ' · 关注名单不完整' : ''}${
+    state.scan && state.scan.limited ? ` · 本次上限 ${fmtNum(state.scan.limit)} 人` : ''
   }`;
   const selectable = pageItems.filter((r) => r.following && !isProtected(r));
   const selectedCount = state.selected.size;
@@ -837,15 +839,15 @@ function openDetectModal() {
     <div class="option-list">
       <label class="option">
         <input type="radio" name="limit" value="${def}" checked />
-        <div><b>先测 ${fmtNum(def)} 人</b><span>推荐。名单较大时可先看一部分。</span></div>
+        <div><b>检测上限 ${fmtNum(def)} 人</b><span>关注与粉丝名单各最多读取 ${fmtNum(def)} 人，适合先确认效果。</span></div>
       </label>
       <label class="option">
         <input type="radio" name="limit" value="3000" />
-        <div><b>3,000 人</b><span>更完整，耗时更长。</span></div>
+        <div><b>检测上限 3,000 人</b><span>关注与粉丝名单各最多读取 3,000 人，耗时更长。</span></div>
       </label>
       <label class="option">
         <input type="radio" name="limit" value="0" />
-        <div><b>全部</b><span>读取所有正在关注与关注我的人，可能较慢。</span></div>
+        <div><b>全部</b><span>完整读取两份名单直到分页结束，大账号可能耗时较久。</span></div>
       </label>
     </div>
     <p class="hint">首次检测会短暂打开一次你的「正在关注 / 关注我的人」页面，用于获取 X 网页端的接口参数。</p>

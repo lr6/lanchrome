@@ -95,21 +95,26 @@
 
     if (data.dir === 'event') {
       if (data.event === 'ready') agentReady = true;
-      if (data.event === 'capture' && data.data) {
-        try {
-          chrome.runtime.sendMessage({ type: 'lan:capture', operation: data.data });
-        } catch (_) {}
+      // 采集窗口里的翻页请求只在本页解析，不写回全局参数缓存，
+      // 否则最后一页的响应会被当成下次检测的第一页。
+      if (!harvest) {
+        if (data.event === 'capture' && data.data) {
+          try {
+            chrome.runtime.sendMessage({ type: 'lan:capture', operation: data.data });
+          } catch (_) {}
+        }
+        if (data.event === 'captureResult' && data.data) {
+          try {
+            chrome.runtime.sendMessage({ type: 'lan:capture-result', result: data.data });
+          } catch (_) {}
+        }
+        if (data.event === 'captureBody' && data.data) {
+          try {
+            chrome.runtime.sendMessage({ type: 'lan:capture-body', body: data.data });
+          } catch (_) {}
+        }
       }
-      if (data.event === 'captureResult' && data.data) {
-        try {
-          chrome.runtime.sendMessage({ type: 'lan:capture-result', result: data.data });
-        } catch (_) {}
-      }
-      if (data.event === 'captureBody' && data.data) {
-        try {
-          chrome.runtime.sendMessage({ type: 'lan:capture-body', body: data.data });
-        } catch (_) {}
-      }
+      if (data.event === 'captureBody' && data.data) handleHarvestBody(data.data);
     }
   });
 
@@ -137,6 +142,188 @@
       } catch (_) {}
       await wait(350);
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 粉丝页翻页采集                                                       */
+  /* ------------------------------------------------------------------ */
+
+  /* X 会校验 Followers 接口的 x-client-transaction-id，重放后续页会 404。
+     这里换一种做法：在后台窗口里打开真实的粉丝页，滚动让它自己发出后续页请求，
+     再把网页端自己返回的每一页响应解析合并。 */
+  // 全量名单可能很长。滚动页本身负责限流，给单页网络响应留出足够时间，
+  // 避免刚打开页面或 X 响应稍慢时就被误判为「已经到底」。
+  const HARVEST_MAX_MS = 30 * 60 * 1000;
+  const HARVEST_SCROLL_WAIT_MS = 1500;
+  const HARVEST_IDLE_LIMIT = 20;
+
+  let harvest = null;
+
+  function harvestMerge(parsed) {
+    if (!harvest || !parsed) return 0;
+    // 200 也可能是错误 JSON 或登录页，不能把空响应当成「已到末尾」
+    if (!(parsed.users && parsed.users.length) && !parsed.cursor && !parsed.terminated) return 0;
+    let added = 0;
+    for (const u of parsed.users || []) {
+      if (u && u.id && !harvest.seen.has(u.id)) {
+        harvest.seen.add(u.id);
+        harvest.users.push(u);
+        added += 1;
+      }
+    }
+    harvest.pages += 1;
+    if (added) harvest.lastNewAt = Date.now();
+    // 只有明确的 TimelineTerminateTimeline 才算「确认读完」。
+    // 某些响应可能暂时缺少 cursor，直接把它当成末尾会让全量检测静默截断。
+    if (parsed.terminated) {
+      harvest.exhausted = true;
+    } else {
+      harvest.cursor = parsed.cursor || harvest.cursor;
+    }
+    return added;
+  }
+
+  function mergeHarvestBody(body) {
+    if (!harvest || harvest.done) return;
+    if (!body || body.operation !== 'Followers' || !body.text) return;
+    if (body.requestId && harvest.seenResponses.has(body.requestId)) return;
+    try {
+      harvestMerge(parseTimeline(JSON.parse(body.text)));
+      if (body.requestId) harvest.seenResponses.add(body.requestId);
+    } catch (_) {}
+  }
+
+  function handleHarvestBody(body) {
+    mergeHarvestBody(body);
+  }
+
+  function scrollHarvestPage() {
+    try {
+      const se = document.scrollingElement || document.documentElement;
+      const height = (se && se.scrollHeight) || 0;
+      window.scrollTo(0, Math.max(0, height));
+      // 部分布局把滚动放在主栏内部，一并滚到底
+      const main = document.querySelector('[data-testid="primaryColumn"]');
+      for (let el = main; el; el = el.parentElement) {
+        if (el.scrollHeight > el.clientHeight + 200) el.scrollTop = el.scrollHeight;
+      }
+      window.dispatchEvent(new Event('scroll'));
+      document.dispatchEvent(new Event('scroll'));
+    } catch (_) {}
+  }
+
+  async function publishHarvest(done = false) {
+    if (!harvest) return;
+    const data = {
+      taskId: harvest.taskId,
+      op: 'Followers',
+      count: harvest.users.length,
+      pages: harvest.pages,
+      exhausted: harvest.exhausted,
+      timedOut: harvest.timedOut,
+      cancelled: harvest.cancelled,
+      done,
+      at: Date.now(),
+    };
+    if (done) data.users = harvest.users;
+    await storageSet({ [`lanHarvest:${harvest.taskId}`]: data });
+  }
+
+  async function runHarvestLoop() {
+    const current = harvest;
+    if (!current) return;
+    let idle = 0;
+    let publishedPages = current.pages;
+    while (harvest === current && !current.done) {
+      if (current.cancelled) break;
+      if (current.limit && current.users.length >= current.limit) {
+        current.capped = true;
+        break;
+      }
+      if (current.exhausted) break;
+      if (Date.now() - current.startedAt > HARVEST_MAX_MS) {
+        current.timedOut = true;
+        break;
+      }
+
+      const pagesBefore = current.pages;
+      scrollHarvestPage();
+      await wait(HARVEST_SCROLL_WAIT_MS);
+
+      if (current.pages === pagesBefore) idle += 1;
+      else idle = 0;
+      if (current.pages !== publishedPages) {
+        publishedPages = current.pages;
+        await publishHarvest(false).catch(() => {});
+      }
+      if (idle >= HARVEST_IDLE_LIMIT) break;
+    }
+
+    current.done = true;
+    await publishHarvest(true);
+    try {
+      chrome.runtime.sendMessage({
+        type: 'lan:harvest-done',
+        taskId: current.taskId,
+        count: current.users.length,
+      });
+    } catch (_) {}
+    if (harvest === current) harvest = null;
+  }
+
+  async function startHarvest(payload = {}) {
+    if (harvest && !harvest.done) return { ok: false, error: '已有粉丝翻页任务在运行' };
+    const taskId = payload.taskId;
+    if (!taskId) return { ok: false, error: '缺少任务 ID' };
+
+    harvest = {
+      taskId,
+      limit: Number(payload.limit) > 0 ? Number(payload.limit) : null,
+      users: [],
+      seen: new Set(),
+      seenResponses: new Set(),
+      pages: 0,
+      cursor: null,
+      exhausted: false,
+      capped: false,
+      timedOut: false,
+      cancelled: false,
+      done: false,
+      startedAt: Date.now(),
+      lastNewAt: Date.now(),
+    };
+
+    // 命令到达前网页端可能已经拿到了第一页，先把它并进来。
+    // 只接受本次打开粉丝页之后捕获的响应，避免把上次检测的最后一页当成第一页。
+    const readFirstBody = async () => {
+      try {
+        const caps = await readCaptures();
+        const info = caps && caps.operations && caps.operations.Followers;
+        if (!info || !info.lastBody) return false;
+        if (!info.lastBodyAt || info.lastBodyAt < harvest.startedAt - 3000) return false;
+        harvestMerge(parseTimeline(JSON.parse(info.lastBody)));
+        if (info.lastBodyRequestId) harvest.seenResponses.add(info.lastBodyRequestId);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    };
+
+    await readFirstBody();
+    for (let i = 0; i < 10 && !harvest.pages; i++) {
+      await wait(500);
+      await readFirstBody();
+    }
+
+    await publishHarvest(false);
+    runHarvestLoop().catch(async () => {
+      if (!harvest) return;
+      harvest.done = true;
+      harvest.timedOut = true;
+      await publishHarvest(true).catch(() => {});
+      harvest = null;
+    });
+    return { ok: true };
   }
 
   /* ------------------------------------------------------------------ */
@@ -380,7 +567,13 @@
           const v = ins.entry && ins.entry.content && ins.entry.content.value;
           if (v) out.cursor = v;
         }
-        if (ins.type === 'TimelineTerminateTimeline') out.terminated = true;
+        // Top 只表示上方没有更新内容，不代表向下分页已经到底。
+        if (
+          ins.type === 'TimelineTerminateTimeline' &&
+          String(ins.direction || '').toLowerCase() !== 'top'
+        ) {
+          out.terminated = true;
+        }
         if (Array.isArray(ins.moduleItems)) {
           for (const mi of ins.moduleItems) {
             const r = mi && mi.item && mi.item.itemContent && mi.item.itemContent.user_results && mi.item.itemContent.user_results.result;
@@ -426,10 +619,16 @@
         throw new Error('登录状态已失效，请先在 x.com 重新登录');
       }
       if (res.status === 429) {
+        // 粉丝后续页本来就要交给页面自己加载，不必在这里长时间等待限流
+        if (op === 'Followers' && cursor) throw new Error('粉丝后续页触发限流');
         await waitForRateLimit(task, res.headers, `${op}`);
         continue;
       }
       if (res.status === 404 || res.status === 400 || res.status === 403) {
+        // 粉丝名单的后续页由 X 的页面自己滚动加载，重放失败时不必再刷新参数
+        if (op === 'Followers' && cursor) {
+          throw new Error('粉丝后续页需要网页端加载');
+        }
         if (attempt < 2) {
           setProgress(task, '准备', '接口参数已过期，正在刷新…');
           capsRef.caps = await ensureTemplates(task, { force: true });
@@ -477,7 +676,11 @@
       }
       const body = info && info.lastBody;
       const sameRequest = !info || !info.lastBodyRequestId || !info.requestId || info.lastBodyRequestId === info.requestId;
-      if (body && sameRequest) {
+      let bodyHasCursor = false;
+      try {
+        bodyHasCursor = !!(info && info.variables && JSON.parse(info.variables).cursor);
+      } catch (_) {}
+      if (body && sameRequest && !bodyHasCursor) {
         try {
           const parsed = parseTimeline(JSON.parse(body));
           if (parsed && (parsed.users.length || parsed.terminated || parsed.cursor)) {
@@ -531,21 +734,27 @@
         throw err;
       }
       const parsed = parseTimeline(json);
-      let added = 0;
+      const previousCursor = bucket.cursor;
       for (const u of parsed.users) {
         if (!seen.has(u.id)) {
           seen.add(u.id);
           bucket.users.push(u);
-          added += 1;
         }
       }
       bucket.pages = (bucket.pages || 0) + 1;
 
       const next = parsed.cursor;
-      if (!next || next === bucket.cursor || parsed.terminated || added === 0) {
+      if (parsed.terminated || !next) {
         bucket.complete = true;
+      } else if (next === previousCursor) {
+        // 游标没有前进时继续请求只会死循环；保留已读数据并明确标为部分结果。
+        bucket.complete = true;
+        bucket.partial = true;
+        bucket.error = '分页游标未前进，名单可能不完整';
+      } else {
+        // 某一页可能只有重复用户，但游标仍会前进；不能据此提前结束全量检测。
+        bucket.cursor = next;
       }
-      bucket.cursor = next || null;
 
       setProgress(task, label, `${label}：已读取 ${bucket.users.length} 人`, {
         done: bucket.users.length,
@@ -567,6 +776,127 @@
     );
     saveTask(task, true);
     return bucket;
+  }
+
+  // 让后台窗口里的真实粉丝页自己翻页，返回网页端捕获到的完整名单
+  async function harvestFollowers(task, bucket) {
+    const target = task.params.limit || null;
+    const limit = target ? Math.max(0, target - bucket.users.length) : null;
+    if (target && limit === 0) return { skipped: true, users: [] };
+    const key = `lanHarvest:${task.id}`;
+    try {
+      chrome.storage.local.remove(key);
+    } catch (_) {}
+
+    setProgress(task, '关注我的人', '正在通过页面读取粉丝后续页面（会短暂打开一个后台窗口）…', {
+      done: bucket.users.length,
+      total: target || null,
+    });
+    saveTask(task);
+
+    let stopped = false;
+    const stopHarvest = () => {
+      if (stopped) return;
+      stopped = true;
+      try {
+        chrome.runtime.sendMessage({ type: 'lan:harvest-stop', taskId: task.id });
+      } catch (_) {}
+    };
+
+    let started;
+    try {
+      started = await Promise.race([
+        new Promise((resolve) => {
+          chrome.runtime.sendMessage(
+            { type: 'lan:harvest-followers', account: task.account, taskId: task.id, limit },
+            (res) => resolve(res)
+          );
+        }),
+        wait(75000).then(() => ({ ok: false, error: '打开粉丝页面超时' })),
+      ]);
+    } catch (err) {
+      stopHarvest();
+      return { error: err && err.message ? err.message : String(err) };
+    }
+    if (!started || !started.ok) {
+      stopHarvest();
+      return { error: (started && started.error) || '无法打开粉丝页面' };
+    }
+
+    const deadline = Date.now() + HARVEST_MAX_MS;
+    let lastCount = -1;
+    let final = null;
+    try {
+      while (Date.now() < deadline) {
+        if (cancelRequested) throw new CancelledError();
+        const data = await storageGet(key, null);
+        if (data && data.count !== lastCount) {
+          lastCount = data.count;
+          setProgress(
+            task,
+            '关注我的人',
+            `关注我的人：正在读取后续页面（后续页已读 ${data.count} 人）`,
+            { done: bucket.users.length + data.count, total: target || null }
+          );
+          saveTask(task);
+        }
+        if (data && data.done) {
+          final = data;
+          break;
+        }
+        // 采集可能持续较久，保持任务心跳，避免被后台判定为无响应
+        task.updatedAt = Date.now();
+        saveTask(task);
+        await wait(1200);
+      }
+    } catch (err) {
+      stopHarvest();
+      throw err;
+    }
+
+    if (!final) {
+      stopHarvest();
+      final = await storageGet(key, null);
+    }
+    try {
+      chrome.storage.local.remove(key);
+    } catch (_) {}
+    return final || { error: '读取粉丝后续页面超时' };
+  }
+
+  function mergeHarvest(task, bucket, result) {
+    if (!result || !Array.isArray(result.users)) return false;
+    const seen = new Set(bucket.users.map((u) => u.id));
+    for (const u of result.users) {
+      if (u && u.id && !seen.has(u.id)) {
+        seen.add(u.id);
+        bucket.users.push(u);
+      }
+    }
+    bucket.pages = (bucket.pages || 0) + (result.pages || 0);
+    if (bucket.users.length > 0) {
+      bucket.unavailable = false;
+      bucket.error = null;
+    }
+    const limit = task.params.limit || null;
+    if (limit && bucket.users.length >= limit) {
+      bucket.capped = true;
+      bucket.complete = true;
+      bucket.partial = false;
+      return true;
+    }
+    if (result.exhausted) {
+      bucket.complete = true;
+      bucket.partial = false;
+      bucket.unavailable = false;
+      bucket.error = null;
+      return true;
+    }
+    bucket.complete = true;
+    bucket.partial = true;
+    bucket.harvestError =
+      result.error || (result.timedOut ? '粉丝页加载超时' : result.cancelled ? '已停止' : null);
+    return true;
   }
 
   /* ------------------------------------------------------------------ */
@@ -766,22 +1096,64 @@
         saveTask(task);
       }
 
+      // 粉丝第 2 页起无法重放时，用真实粉丝页自己滚动加载来补全
+      const followerBucket = task.state.followers;
+      const followersAuthFailed = !!(followersError && /登录状态已失效/.test(followersError));
+      if (
+        !followersAuthFailed &&
+        !followerBucket.capped &&
+        (!followerBucket.complete || followerBucket.partial || followerBucket.unavailable)
+      ) {
+        try {
+          const harvested = await harvestFollowers(task, followerBucket);
+          if (harvested && !harvested.skipped && mergeHarvest(task, followerBucket, harvested)) {
+            if (followerBucket.users.length > 0 || !followerBucket.unavailable) followersError = null;
+            setProgress(
+              task,
+              '关注我的人',
+              followerBucket.partial
+                ? `关注我的人：读取到 ${followerBucket.users.length} 人（后续页面未完全加载）`
+                : `关注我的人：读取完成，共 ${followerBucket.users.length} 人`
+            );
+            saveTask(task, true);
+          }
+        } catch (err) {
+          if (err instanceof CancelledError) throw err;
+          setProgress(task, '关注我的人', '粉丝后续页面读取失败，继续核对「谁没有回关我」…');
+          saveTask(task);
+        }
+      }
+      const followingBucket = task.state.following;
+      task.approximate =
+        !!followingBucket.partial ||
+        !!followerBucket.partial ||
+        !(followerBucket.complete || followerBucket.capped) ||
+        !(followingBucket.complete || followingBucket.capped);
+
       await runLookup(task);
 
       setProgress(task, '整理记录', '正在合并关系记录…');
       const stats = await mergeRelations(task);
       if (followersError) stats.notFollowedByMe = null;
-      const followersPartial = !!task.state.followers.partial;
+      const followingPartial = !!followingBucket.partial;
+      const followersPartial = !!followerBucket.partial;
+      const followingCapped = !!followingBucket.capped;
+      const followersCapped = !!followerBucket.capped;
+      const limited = followingCapped || followersCapped;
 
       await storageSet({
         [`lanScan:${task.account.id}`]: {
           taskId: task.id,
           at: Date.now(),
           stats,
-          scannedFollowing: task.state.following.users.length,
-          scannedFollowers: followersError ? 0 : task.state.followers.users.length,
+          scannedFollowing: followingBucket.users.length,
+          scannedFollowers: followersError ? 0 : followerBucket.users.length,
           approximate: !!task.approximate,
           limit: task.params.limit || null,
+          limited,
+          followingPartial,
+          followingCapped,
+          followersCapped,
           followersUnavailable: !!followersError,
           followersError,
           followersPartial,
@@ -792,9 +1164,13 @@
       task.endedAt = Date.now();
       task.result = {
         ...stats,
-        scannedFollowing: task.state.following.users.length,
-        scannedFollowers: followersError ? 0 : task.state.followers.users.length,
+        scannedFollowing: followingBucket.users.length,
+        scannedFollowers: followersError ? 0 : followerBucket.users.length,
         approximate: !!task.approximate,
+        limited,
+        followingPartial,
+        followingCapped,
+        followersCapped,
         followersUnavailable: !!followersError,
         followersPartial,
       };
@@ -804,7 +1180,11 @@
           `检测完成：未回关 ${stats.notFollowingBack} 人` +
           (followersError ? '（粉丝名单未获取，「我未回关」暂不可用）' : '') +
           (followersPartial && !followersError ? '（粉丝名单不完整，「我未回关」为部分结果）' : '') +
-          (task.approximate && !followersError && !followersPartial ? '（名单未完整读取，结果为近似）' : ''),
+          (followingPartial ? '（关注名单不完整，结果可能缺少部分账号）' : '') +
+          (limited && task.params.limit ? `（本次按上限 ${task.params.limit} 人检测，并未扫描全部）` : '') +
+          (task.approximate && !followersError && !followersPartial && !followingPartial
+            ? '（名单未完整读取，结果为近似）'
+            : ''),
         done: 1,
         total: 1,
       };
@@ -1592,6 +1972,11 @@
         return { ok: true, taskId: payload.task.id };
       case 'cancel':
         cancelRequested = true;
+        return { ok: true };
+      case 'harvest':
+        return startHarvest(payload);
+      case 'harvest-stop':
+        if (harvest) harvest.cancelled = true;
         return { ok: true };
       case 'selftest':
         return { ok: true, report: await runSelfTest() };

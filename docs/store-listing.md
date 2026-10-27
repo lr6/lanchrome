@@ -121,13 +121,13 @@ Unfollows require explicit selection and confirmation with a fixed 4–8 second 
 - [x] 小型宣传图 440×280（`docs/promo-440x280.png`）
 - [x] 隐私政策公网 URL：https://tidyfollows.1475369.xyz/privacy
 - [x] 支持邮箱 / 主页：support@1475369.xyz / https://tidyfollows.1475369.xyz
-- [x] ZIP 包（manifest 位于根目录）：`dist/tidyfollows-1.0.0.zip`，由 `./scripts/package.sh` 生成
+- [x] ZIP 包（manifest 位于根目录）：`dist/tidyfollows-1.0.2.zip`，由 `./scripts/package.sh` 生成
 
 ## 上架前检查
 
 - [ ] 商标检索（CNIPA / USPTO）与 `tidyfollows` 域名、社交账号可用性
 - [x] 商店名称与 manifest `name` 一致：关注整理所 · 互关检测与关注清理
-- [x] 版本号 1.0.0，ZIP 已重新打包
+- [x] 版本号 1.0.2，ZIP 已重新打包
 - [x] 描述里没有「自动取关」「批量取消关注」等强自动化措辞
 - [x] 隐私政策 URL 可公开访问
 - [x] 截图使用演示数据，不包含真实账号
