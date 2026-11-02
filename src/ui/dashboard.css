@@ -687,6 +687,31 @@ body {
   font-size: 12.5px;
 }
 
+.scan-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 10px 20px 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f7f9fc;
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.scan-notice .btn {
+  flex: 0 0 auto;
+}
+
+.scan-notice b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
 .list-meta {
   display: flex;
   align-items: center;

@@ -15,9 +15,22 @@
   --window-size=1280,800
 ```
 
-- 正式版 Chrome 156 的 `--load-extension` 不生效，必须用 Chrome for Testing。
-- 扩展 ID 由路径推导，当前为 `lhjcbgklocfcaphoilhanbafgfmkaikl`；换路径后脚本里的常量要一起改。
+Windows 示例（Git Bash，使用 Playwright 自带的 Chromium）：
+
+```bash
+CHROME="$LOCALAPPDATA/ms-playwright/chromium-1200/chrome-win64/chrome.exe"
+"$CHROME" --headless=new --remote-debugging-port=9333 \
+  --user-data-dir="C:\\Users\\<user>\\AppData\\Local\\Temp\\lanchrome-test-profile" \
+  --no-first-run --no-default-browser-check --disable-gpu \
+  --disable-extensions-except="C:\\zhibo\\lanchrome" \
+  --load-extension="C:\\zhibo\\lanchrome" \
+  --window-size=1280,800 about:blank
+```
+
+- 正式版 Chrome 156 的 `--load-extension` 不生效，必须用 Chrome for Testing / Playwright Chromium。
+- 扩展 ID 由路径推导。`relation-sync-test.mjs` 会自动发现 ID；其余脚本仍写死了 macOS 路径下的 ID，换路径后需要一起改。
 - 测试脚本默认连接 `127.0.0.1:9333`，截图输出到 `/tmp/lanchrome-shots`。
+- Node 20 需要加 `--experimental-websocket` 才能使用全局 `WebSocket`；Node 22+ 可直接运行。
 
 ## 脚本
 
@@ -27,12 +40,14 @@
 | `pipeline-test.mjs` | 用 CDP `Fetch` 伪造 x.com 文档与 GraphQL 响应，端到端跑「检测 → 分页 → 互关核对 → 取关」 |
 | `followers-pagination-test.mjs` | 模拟粉丝后续页重放失败，验证小窗口滚动加载能把第 2 页补全 |
 | `degrade-test.mjs` | 模拟粉丝接口 401，验证降级：仍完成「未回关我」，`我未回关` 置为不可用 |
+| `relation-sync-test.mjs` | 模拟网页端关注 / 取关，验证关系记录实时同步、快照提示与「重新检测」入口；会校验页面账号不一致时不写入 |
 
 ```bash
 node scripts/dev/ui-test.mjs
 node scripts/dev/pipeline-test.mjs
 node scripts/dev/followers-pagination-test.mjs
 node scripts/dev/degrade-test.mjs
+node --experimental-websocket scripts/dev/relation-sync-test.mjs
 ```
 
 ## 限制

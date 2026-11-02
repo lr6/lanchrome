@@ -9,6 +9,7 @@
 ## 功能
 
 - **互关检测**：读取「正在关注」与「关注我的人」两份名单，再用 `friendships/lookup` 精确核对每个人的互关状态。粉丝名单不可用时自动降级，仍可准确统计「未回关我」，仅「我未回关」本次不可用。
+- **实时同步**：在本浏览器里手动关注 / 取关后，关系记录会立即更新，不必等下一次全量检测；关系页顶部会标明名单基线的检测时间，其他设备或客户端的变动需重新检测。
 - **批量取关**：先勾选、预览、确认，再逐个执行；特别关注自动跳过；随机间隔；随时停止，中断后可继续。
 - **特别关注**：按人保护，批量清理时永不触碰。
 - **备份与恢复**：JSON 导入导出；清空数据前一键备份。
@@ -33,7 +34,7 @@
 
 1. 连接 X 账号（读取当前浏览器已登录的会话）。
 2. 点「开始检测」，选择 1,000 / 3,000 / 全部。首次检测会自动**短暂打开两个后台标签页**（你的「正在关注」和「关注我的人」页面），用于获取 X 网页端的接口参数；参数会缓存 18 小时。读取粉丝第 2 页起时还会**短暂打开一个小窗口**（不抢焦点），让 X 自己的页面滚动加载后续页。
-3. 检测完成后进入「关系名单」，查看未回关我 / 我未回关 / 互关。
+3. 检测完成后进入「关系名单」，查看未回关我 / 我未回关 / 互关。名单顶部会显示这份数据的检测时间；之后在本浏览器里的关注 / 取关会实时同步，其他设备上的变动需要重新检测。
 4. 想留下的人先加入「特别关注」。
 5. 勾选要清理的人 →「批量取关」→ 预览确认。取关按固定的 4–8 秒随机间隔逐个执行，可随时停止。
 6. 需要留档时到「备份与恢复」导出 JSON。
@@ -56,6 +57,7 @@ X 网页端没有公开 API 给个人使用，本扩展走的是网页端自己�
 - `agent.js` 在 `document_start` 旁路 `fetch` / `XMLHttpRequest`，记录 X 网页端真实请求里的 `queryId`、`features`、`authorization`、`x-csrf-token`、`x-client-transaction-id`。
 - 名单通过 GraphQL 的 `Following` / `Followers` 分页接口读取，解析 `TimelineUser` 条目。粉丝第 1 页使用**捕获到的网页端原始响应**（`Followers` 的 transaction-id 无法重放）；第 2 页起改为短暂打开一个小窗口，让 X 自己的粉丝页滚动加载，并逐页解析网页端返回的响应。这样粉丝数超过单页上限时也能读全。
 - 互关状态用 `GET /i/api/1.1/friendships/lookup.json` 精确核对，每批 100 人。
+- `agent.js` 还会识别网页端自己的 `CreateFriendship` / `DestroyFriendship`（以及旧版 REST `friendships/create.json` / `destroy.json`）。动作成功后由 `background.js` 串行更新对应关系记录，并用一次单人 `lookup` 校准互关状态。
 - 取关用 `POST /i/api/1.1/friendships/destroy.json`，逐条执行。
 - 请求在 x.com 页面上下文发出（`credentials: 'include'`），绕开扩展跨域 CORS 限制，不需要 X API Key。
 - 接口参数过期或捕获失败时，自动重新打开名单页刷新；429 按 `x-rate-limit-reset` 等待。
@@ -109,7 +111,7 @@ for f in background.js src/page/agent.js src/page/bridge.js src/ui/popup.js src/
 
 本项目在 Chrome for Testing 156（headless）中完成了以下运行时验证，脚本见 `scripts/dev/`：
 
-- 扩展加载、Service Worker 启动、控制台与弹窗渲染，无异常或警告；版本 1.0.2。
+- 扩展加载、Service Worker 启动、控制台与弹窗渲染，无异常或警告；版本 1.0.3。
 - 概览 / 关系名单 / 特别关注 / 备份 / 设置五个页面均可切换；关系统计、勾选与批量条正常。
 - 分享卡页面、Canvas、路由与代码已完全移除，无残留引用。
 - 备份导出不包含 `lanCaptures`（会话请求头）、`lanWarmups`、`lanTask`、`lanWorkerTab`；导入时同样跳过这些字段。
@@ -117,6 +119,7 @@ for f in background.js src/page/agent.js src/page/bridge.js src/ui/popup.js src/
 - 两个内容脚本分别在 MAIN world 与隔离 world 注入成功。
 - 用 CDP `Fetch` 伪造 x.com 文档与接口，端到端跑通「关注/粉丝分页 → 互关核对 → 统计 → 批量取关」；特别关注跳过、关系落盘、历史记录均正确。
 - 模拟粉丝接口 401：检测降级完成，「未回关我」正常，「我未回关」置为不可用并给出说明。
+- 模拟网页端 `CreateFriendship` / `DestroyFriendship` 与 REST 关注入口：关系记录实时更新、`lookup` 校准资料、页面账号不一致时不写入；关系页的快照提示与「重新检测」入口正常。
 
 未覆盖：真实登录会话、真实 X 接口与限流恢复。headless Chrome 访问 x.com 会返回 403，真实账号回归仍需人工执行——建议首次使用时先用小范围检测确认。
 
@@ -136,6 +139,13 @@ for f in background.js src/page/agent.js src/page/bridge.js src/ui/popup.js src/
 自检结果可点「复制结果」，附上版本号与浏览器信息便于排查。
 
 ## 更新日志
+
+### 1.0.3
+
+- 新增关系实时同步：在本浏览器里手动关注 / 取关后，立即更新本机关系记录，不必等下一次全量检测。
+- 关系名单顶部显示名单基线的检测时间，并提供「重新检测」入口；在其他设备或客户端上的变动仍以重新检测为准。
+- 实时同步会优先用单次 `friendships/lookup` 校准互关状态；页面登录账号与扩展追踪账号不一致时不会写入，避免多账号串数据。
+- 新增 `scripts/dev/relation-sync-test.mjs` 回归测试。
 
 ### 1.0.2
 

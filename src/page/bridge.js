@@ -115,6 +115,8 @@
         }
       }
       if (data.event === 'captureBody' && data.data) handleHarvestBody(data.data);
+      // 用户在网页端自己的关注 / 取关动作：立即同步，不必等下一次检测
+      if (data.event === 'relation' && data.data) queueRelationEvent(data.data);
     }
   });
 
@@ -371,6 +373,112 @@
     await ensureAgent();
     const res = await agentCall('api', payload, payload.timeoutMs || 60000);
     return res.response;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 浏览器内手动关注 / 取关实时同步                                       */
+  /* ------------------------------------------------------------------ */
+
+  // 页面里的账号必须和扩展追踪的账号一致，避免多账号浏览器串数据
+  async function resolveViewerAccount() {
+    let pageHandle = '';
+    try {
+      const link = document.querySelector('a[data-testid="AppTabBar_Profile_Link"]');
+      const href = link && link.getAttribute('href');
+      if (href) {
+        const first = new URL(href, location.origin).pathname.split('/').filter(Boolean)[0] || '';
+        if (/^[A-Za-z0-9_]{1,15}$/.test(first)) pageHandle = first.toLowerCase();
+      }
+    } catch (_) {}
+    const accounts = (await storageGet('lanAccounts', [])) || [];
+    if (pageHandle) {
+      return (
+        accounts.find((a) => String(a.screenName || '').toLowerCase() === pageHandle) || null
+      );
+    }
+    // 响应式布局里可能找不到侧边栏链接；只有单账号时才安全回退
+    return accounts.length === 1 ? accounts[0] : null;
+  }
+
+  async function lookupRelationState(id, screenName) {
+    const param = id
+      ? `user_id=${encodeURIComponent(id)}`
+      : screenName
+      ? `screen_name=${encodeURIComponent(screenName)}`
+      : '';
+    if (!param) return null;
+    try {
+      const res = await api({
+        method: 'GET',
+        url: `${X_ORIGIN}/i/api/1.1/friendships/lookup.json?${param}`,
+        useTransaction: false,
+      });
+      if (res.status !== 200) return null;
+      const arr = JSON.parse(res.text);
+      if (!Array.isArray(arr) || !arr.length || !arr[0]) return null;
+      const item = arr[0];
+      const conns = Array.isArray(item.connections) ? item.connections : [];
+      return {
+        id: String(item.id_str || item.id || ''),
+        screenName: item.screen_name || '',
+        name: item.name || '',
+        avatar: item.profile_image_url_https
+          ? String(item.profile_image_url_https).replace('_normal.', '_200x200.')
+          : null,
+        following: conns.includes('following'),
+        followsMe: conns.includes('followed_by'),
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  let lastRelationKey = '';
+  let lastRelationAt = 0;
+
+  async function syncRelationFromEvent(data) {
+    if (!data || (data.action !== 'follow' && data.action !== 'unfollow')) return;
+    const dedupeKey = data.action + ':' + (data.id || data.screenName || '');
+    const now = Date.now();
+    if (dedupeKey && dedupeKey === lastRelationKey && now - lastRelationAt < 800) return;
+    lastRelationKey = dedupeKey;
+    lastRelationAt = now;
+
+    const account = await resolveViewerAccount();
+    if (!account) return;
+
+    // 以服务端 lookup 结果为准；失败时按用户动作兜底
+    const lookup = await lookupRelationState(data.id, data.screenName);
+    const id = (lookup && lookup.id) || data.id || '';
+    if (!id) return;
+
+    try {
+      chrome.runtime.sendMessage({
+        type: 'lan:relation-sync',
+        payload: {
+          accountId: account.id,
+          action: data.action,
+          id,
+          screenName: (lookup && lookup.screenName) || data.screenName || '',
+          name: (lookup && lookup.name) || '',
+          avatar: (lookup && lookup.avatar) || null,
+          following: lookup ? lookup.following : data.action === 'follow',
+          followsMe: lookup ? lookup.followsMe : undefined,
+          source: data.source || 'graphql',
+          at: data.at || now,
+        },
+      });
+    } catch (_) {}
+  }
+
+  // 同一页可能同时被 fetch / XHR 观测到，串行处理并去重
+  let relationSyncChain = Promise.resolve();
+  function queueRelationEvent(data) {
+    relationSyncChain = relationSyncChain.then(
+      () => syncRelationFromEvent(data),
+      () => syncRelationFromEvent(data)
+    );
+    return relationSyncChain;
   }
 
   function headersNumber(headers, name) {

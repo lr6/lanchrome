@@ -368,6 +368,61 @@ function queueCaptureBody(body) {
 }
 
 /* -------------------------------------------------------------------- */
+/* 手动关注 / 取关实时同步                                                */
+/* -------------------------------------------------------------------- */
+
+async function applyRelationSync(payload) {
+  const accountId = payload && payload.accountId;
+  const id = payload && String(payload.id || '');
+  if (!accountId || !id) return { ok: false, error: '缺少账号或用户' };
+
+  const key = `lanRelations:${accountId}`;
+  const relations = (await store.get(key, {})) || {};
+  const prev = relations[id] || null;
+  const scan = await store.get(`lanScan:${accountId}`, null);
+  const now = Date.now();
+  const action = payload.action === 'unfollow' ? 'unfollow' : 'follow';
+  const following =
+    payload.following === undefined || payload.following === null
+      ? action === 'follow'
+      : !!payload.following;
+
+  relations[id] = {
+    ...(prev || {}),
+    id,
+    screenName: payload.screenName || (prev && prev.screenName) || '',
+    name: payload.name || (prev && prev.name) || '',
+    avatar: payload.avatar || (prev && prev.avatar) || null,
+    following,
+    followsMe:
+      payload.followsMe === undefined || payload.followsMe === null
+        ? !!(prev && prev.followsMe)
+        : !!payload.followsMe,
+    protected: !!(prev && prev.protected),
+    firstSeen: (prev && prev.firstSeen) || now,
+    lastSeen: now,
+    scannedAt: (prev && prev.scannedAt) || now,
+    scanId: (scan && scan.taskId) || (prev && prev.scanId) || null,
+    stale: false,
+    unfollowedAt: action === 'unfollow' ? now : null,
+    liveAt: now,
+  };
+
+  await store.set({ [key]: relations });
+  return { ok: true, relation: relations[id] };
+}
+
+// 多个 x.com 标签页可能同时上报，串行合并避免读改写覆盖
+let relationChain = Promise.resolve();
+function queueRelationSync(payload) {
+  relationChain = relationChain.then(
+    () => applyRelationSync(payload),
+    () => applyRelationSync(payload)
+  );
+  return relationChain;
+}
+
+/* -------------------------------------------------------------------- */
 /* 任务                                                                  */
 /* -------------------------------------------------------------------- */
 
@@ -607,6 +662,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case 'lan:capture-body': {
         await queueCaptureBody(msg.body);
         return { ok: true };
+      }
+      case 'lan:relation-sync': {
+        return await queueRelationSync(msg.payload);
       }
       case 'lan:capture': {
         await queueCapture(msg.operation);

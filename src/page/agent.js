@@ -14,6 +14,8 @@
   const NS = 'LAN_BLUE';
   // 这些接口的请求上下文/transaction-id 无法可靠重放，改为捕获网页端自己的响应
   const CAPTURE_BODY_OPS = new Set(['Following', 'Followers']);
+  // 用户自己在网页端点的关注 / 取关，用于实时更新本机关系记录
+  const RELATION_GRAPHQL_OPS = /^(Create|Destroy)Friendship(?:V\d+)?$/i;
   // X Web 客户端的公开 Bearer（非用户凭据），仅在尚未捕获到真实请求时兜底
   const PUBLIC_BEARER =
     'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
@@ -104,7 +106,54 @@
   /* 旁路捕获                                                            */
   /* ------------------------------------------------------------------ */
 
-  function noteRequest(method, rawUrl, headers) {
+  // 旧版 REST 关注接口使用表单 body，取值兼容 string / URLSearchParams / FormData
+  function formValue(body, names) {
+    if (!body) return '';
+    try {
+      if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
+        for (const name of names) {
+          const value = body.get(name);
+          if (value) return String(value);
+        }
+        return '';
+      }
+      if (typeof FormData !== 'undefined' && body instanceof FormData) {
+        for (const name of names) {
+          const value = body.get(name);
+          if (value) return String(value);
+        }
+        return '';
+      }
+      if (typeof body === 'string') {
+        const params = new URLSearchParams(body);
+        for (const name of names) {
+          const value = params.get(name);
+          if (value) return String(value);
+        }
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function relationTargetId(rawVariables) {
+    if (!rawVariables) return '';
+    try {
+      const vars = JSON.parse(rawVariables);
+      const id =
+        vars && (vars.user_id || vars.userId || vars.target_user_id || vars.targetUserId);
+      return id ? String(id) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function emitRelation(relation) {
+    if (!relation || !relation.action) return;
+    if (!relation.id && !relation.screenName) return;
+    emit('relation', { ...relation, at: Date.now() });
+  }
+
+  function noteRequest(method, rawUrl, headers, body) {
     try {
       if (!rawUrl) return null;
       const url = new URL(String(rawUrl), location.origin);
@@ -118,6 +167,23 @@
 
       const tx = headers['x-client-transaction-id'];
       if (tx) state.lastTransactionId = tx;
+
+      // 旧版 REST：/i/api/1.1/friendships/create.json | destroy.json
+      const restAction = url.pathname.endsWith('/i/api/1.1/friendships/create.json')
+        ? 'follow'
+        : url.pathname.endsWith('/i/api/1.1/friendships/destroy.json')
+        ? 'unfollow'
+        : null;
+      if (restAction && String(method || 'GET').toUpperCase() === 'POST') {
+        return {
+          relation: {
+            action: restAction,
+            id: formValue(body, ['user_id', 'userId']),
+            screenName: formValue(body, ['screen_name', 'screenName']),
+            source: 'rest',
+          },
+        };
+      }
 
       if (!url.pathname.startsWith('/i/api/graphql/')) return null;
       const parts = url.pathname.split('/').filter(Boolean);
@@ -157,10 +223,19 @@
         requestId,
         at,
       };
+      let relation = null;
+      if (RELATION_GRAPHQL_OPS.test(operation)) {
+        relation = {
+          action: /^destroy/i.test(operation) ? 'unfollow' : 'follow',
+          id: relationTargetId(variables),
+          source: 'graphql',
+        };
+      }
+
       state.lastSeenAt = at;
 
       emit('capture', state.operations[operation]);
-      return { operation, requestId };
+      return { operation, requestId, relation };
     } catch (_) {
       return null;
     }
@@ -176,22 +251,26 @@
         let headers = null;
         if (init && init.headers) headers = init.headers;
         else if (isRequest) headers = input.headers;
-        note = noteRequest(method, url, headersToObject(headers));
+        const body = (init && init.body) || null;
+        note = noteRequest(method, url, headersToObject(headers), body);
       } catch (_) {}
 
       const promise = nativeFetch(input, init);
       if (note && promise && typeof promise.then === 'function') {
         promise
           .then((res) => {
-            try {
-              emit('captureResult', {
-                operation: note.operation,
-                requestId: note.requestId,
-                status: res.status,
-                at: Date.now(),
-              });
-            } catch (_) {}
-            if (CAPTURE_BODY_OPS.has(note.operation) && res.ok) {
+            if (note.relation && res && res.ok) emitRelation(note.relation);
+            if (note.operation) {
+              try {
+                emit('captureResult', {
+                  operation: note.operation,
+                  requestId: note.requestId,
+                  status: res.status,
+                  at: Date.now(),
+                });
+              } catch (_) {}
+            }
+            if (note.operation && CAPTURE_BODY_OPS.has(note.operation) && res.ok) {
               try {
                 res
                   .clone()
@@ -234,25 +313,29 @@
       } catch (_) {}
       return nativeSetHeader.apply(this, arguments);
     };
-    proto.send = function () {
+    proto.send = function (body) {
       let note = null;
       try {
-        if (this.__lan) note = noteRequest(this.__lan.method, this.__lan.url, this.__lan.headers);
+        if (this.__lan) note = noteRequest(this.__lan.method, this.__lan.url, this.__lan.headers, body);
       } catch (_) {}
       if (note) {
         try {
           this.addEventListener(
             'loadend',
             () => {
-              try {
-                emit('captureResult', {
-                  operation: note.operation,
-                  requestId: note.requestId,
-                  status: this.status,
-                  at: Date.now(),
-                });
-              } catch (_) {}
-              if (CAPTURE_BODY_OPS.has(note.operation) && this.status === 200) {
+              const ok = this.status >= 200 && this.status < 300;
+              if (note.relation && ok) emitRelation(note.relation);
+              if (note.operation) {
+                try {
+                  emit('captureResult', {
+                    operation: note.operation,
+                    requestId: note.requestId,
+                    status: this.status,
+                    at: Date.now(),
+                  });
+                } catch (_) {}
+              }
+              if (note.operation && CAPTURE_BODY_OPS.has(note.operation) && this.status === 200) {
                 let text = null;
                 try {
                   text = this.responseText;

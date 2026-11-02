@@ -450,6 +450,7 @@ function renderRelations() {
   if (state.route !== 'relations') return;
 
   $$('#filterTabs button').forEach((b) => b.classList.toggle('active', b.dataset.filter === state.filter));
+  renderScanNotice();
 
   const q = state.search.trim().toLowerCase();
   const all = Object.values(state.relations);
@@ -526,6 +527,9 @@ function renderRelations() {
       if (r.following && r.followsMe) badges.push('<span class="chip mint">互关</span>');
       if (r.following && !r.followsMe) badges.push('<span class="chip rose">未回关</span>');
       if (!r.following && r.followsMe) badges.push('<span class="chip blue">我未回关</span>');
+      if (r.liveAt && (!state.scan || r.liveAt > (state.scan.at || 0))) {
+        badges.push('<span class="chip">已同步</span>');
+      }
       if (protectedUser) badges.push('<span class="chip amber">特别关注</span>');
       if (r.unfollowedAt) badges.push('<span class="chip">已取关</span>');
 
@@ -553,6 +557,26 @@ function renderRelations() {
   renderPager(pages);
   bindListMeta();
   renderSelectionBar();
+}
+
+// 名单是检测快照：手动关注/取关会实时同步，但其他设备或客户端的变动不会。
+function renderScanNotice() {
+  const box = $('#scanNotice');
+  if (!box) return;
+  if (state.route !== 'relations' || !state.scan) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  const running = state.task && state.task.status === 'running';
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <span>名单基线：<b>${fmtTime(state.scan.at)}</b> 的检测结果。在本浏览器里手动关注 / 取关会实时同步；其他设备或客户端的变动需重新检测。</span>
+    <button class="btn ghost sm" id="scanNoticeRedetect" ${running ? 'disabled' : ''}>${
+      running ? '检测进行中' : '重新检测'
+    }</button>`;
+  const btn = $('#scanNoticeRedetect');
+  if (btn && !running) btn.addEventListener('click', startDetection);
 }
 
 function renderPager(pages) {
